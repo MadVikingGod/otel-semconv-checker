@@ -9,6 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const Version = "https://opentelemetry.io/schemas/1.21.0"
+
 //go:embed src/*
 var files embed.FS
 

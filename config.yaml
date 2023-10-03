@@ -1,4 +1,12 @@
 resource:
+  groups:
+  - host
+  - os
+  ignore:
+  - "host.id"
+  - "host.name"
+  - "resource.name"
+  report_additional: true
 trace:
 - match: xyz.regex
   groups:
