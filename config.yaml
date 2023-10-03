@@ -1,0 +1,12 @@
+resource:
+trace:
+- match: xyz.regex
+  groups:
+  - 
+  ignore:
+  - 
+  report_additional: true
+metric:
+log:
+report_unmatched: true
+
