@@ -2,19 +2,29 @@ package servers
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"regexp"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
-	pbTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	pbCollectorTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	pbResource "go.opentelemetry.io/proto/otlp/resource/v1"
+	pbTrace "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
 type TraceServer struct {
-	pbTrace.UnimplementedTraceServiceServer
+	pbCollectorTrace.UnimplementedTraceServiceServer
 
 	resourceVersion string
 	resourceGroups  []string
 	resourceIgnore  []string
+	matches         []traceMatch
+}
+
+type traceMatch struct {
+	match  *regexp.Regexp
+	group  []string
+	ignore []string
 }
 
 func NewTraceService(cfg Config, g map[string]semconv.Group) *TraceServer {
@@ -22,14 +32,29 @@ func NewTraceService(cfg Config, g map[string]semconv.Group) *TraceServer {
 	for _, group := range cfg.Resource.Groups {
 		resourceGroups = append(resourceGroups, g[group])
 	}
+	matches := []traceMatch{}
+	for _, match := range cfg.Trace {
+		reg := regexp.MustCompile(match.Match)
+		groups := []semconv.Group{}
+		for _, group := range match.Groups {
+			groups = append(groups, g[group])
+		}
+		matches = append(matches, traceMatch{
+			match:  reg,
+			group:  semconv.Combine(groups...),
+			ignore: match.Ignore,
+		})
+	}
+
 	return &TraceServer{
 		resourceVersion: semconv.Version,
 		resourceGroups:  semconv.Combine(resourceGroups...),
 		resourceIgnore:  cfg.Resource.Ignore,
+		matches:         matches,
 	}
 }
 
-func (s *TraceServer) Export(ctx context.Context, req *pbTrace.ExportTraceServiceRequest) (*pbTrace.ExportTraceServiceResponse, error) {
+func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTraceServiceRequest) (*pbCollectorTrace.ExportTraceServiceResponse, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -41,22 +66,28 @@ func (s *TraceServer) Export(ctx context.Context, req *pbTrace.ExportTraceServic
 			)
 		}
 		checkResource(s.resourceGroups, s.resourceIgnore, r.Resource)
-		for j, scope := range r.ScopeSpans {
-			slog.Info("scope",
-				slog.Int("index", j),
-				slog.Any("scope", scope.Scope),
-				slog.String("schema_url", scope.SchemaUrl),
-			)
-			for k, span := range scope.Spans {
-				slog.Info("span",
-					slog.Int("index", k),
-					slog.String("name", span.Name),
-					slog.Any("attributes", span.Attributes),
+
+		for _, scope := range r.ScopeSpans {
+			if scope.SchemaUrl != s.resourceVersion {
+				slog.Info("incorrect scope version",
+					slog.String("version", scope.SchemaUrl),
+					slog.String("expected", s.resourceVersion),
+					slog.Any("scope", scope.Scope),
 				)
+			}
+			fmt.Println(len(scope.Spans))
+			for _, span := range scope.Spans {
+				for _, match := range s.matches {
+					if match.match.MatchString(span.Name) {
+						checkSpan(match.group, match.ignore, span)
+					} else {
+						slog.Info("span does not match", "span", span.Name, "match", match.match.String())
+					}
+				}
 			}
 		}
 	}
-	return &pbTrace.ExportTraceServiceResponse{}, nil
+	return &pbCollectorTrace.ExportTraceServiceResponse{}, nil
 }
 
 func filter(input, removed []string) []string {
@@ -84,6 +115,25 @@ func checkResource(rg, ignore []string, r *pbResource.Resource) {
 		}
 		if len(extra) > 0 {
 			slog.Info("extra attributes",
+				slog.Any("attributes", extra),
+			)
+		}
+	}
+}
+
+func checkSpan(ag, ignore []string, s *pbTrace.Span) {
+	if s != nil {
+		missing, extra := semconv.Compare(ag, s.Attributes)
+		missing, extra = filter(missing, ignore), filter(extra, ignore)
+		if len(missing) > 0 {
+			slog.Info("missing attributes",
+				slog.String("name", s.Name),
+				slog.Any("attributes", missing),
+			)
+		}
+		if len(extra) > 0 {
+			slog.Info("extra attributes",
+				slog.String("name", s.Name),
 				slog.Any("attributes", extra),
 			)
 		}

@@ -1,7 +1,7 @@
 package servers
 
 type Config struct {
-	ServerAddress string
+	ServerAddress string `mapstructure:"server_address"`
 	Resource      Match
 	Trace         []Match
 	Metric        []Match
@@ -12,10 +12,10 @@ type Match struct {
 	Match            string
 	Groups           []string
 	Ignore           []string
-	ReportAdditional bool
+	ReportAdditional bool `mapstructure:"report_additional"`
 }
 
-/*
+var DefaultConfig = `---
 resource:
   groups:
   - host
@@ -26,13 +26,13 @@ resource:
   - "resource.name"
   report_additional: true
 trace:
-- match: xyz.regex
+- match: http.server.*
   groups:
-  -
+  - trace.http.server
   ignore:
   -
   report_additional: true
 metric:
 log:
 report_unmatched: true
-*/
+`

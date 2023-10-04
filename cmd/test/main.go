@@ -46,6 +46,20 @@ var traceReq = &pbTraceCollector.ExportTraceServiceRequest{
 							StringKV("scope.name", "scope-1"),
 						},
 					},
+					Spans: []*pbTrace.Span{
+						{
+							Name: "empty",
+							Attributes: []*pbCommon.KeyValue{
+								StringKV("span.name", "empty"),
+							},
+						},
+						{
+							Name: "http.server.response",
+							Attributes: []*pbCommon.KeyValue{
+								StringKV("http.route", "something"),
+							},
+						},
+					},
 				},
 			},
 		},
