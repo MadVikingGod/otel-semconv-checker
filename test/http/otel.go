@@ -11,12 +11,10 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
-func setupOTelSDK() (shutdown func(context.Context) error, err error) {
-	serviceName := "e2e.http"
-	serviceVersion := "v0.0.1"
+func setupOTelSDK(res *resource.Resource) (shutdown func(context.Context) error, err error) {
+
 	ctx := context.Background()
 	var shutdownFuncs []func(context.Context) error
 
@@ -35,13 +33,6 @@ func setupOTelSDK() (shutdown func(context.Context) error, err error) {
 	// handleErr calls shutdown for cleanup and makes sure that all errors are returned.
 	handleErr := func(inErr error) {
 		err = errors.Join(inErr, shutdown(ctx))
-	}
-
-	// Setup resource.
-	res, err := newResource(serviceName, serviceVersion)
-	if err != nil {
-		handleErr(err)
-		return
 	}
 
 	// Setup trace provider.
@@ -63,24 +54,6 @@ func setupOTelSDK() (shutdown func(context.Context) error, err error) {
 	otel.SetMeterProvider(meterProvider)
 
 	return
-}
-
-func newResource(serviceName, serviceVersion string) (*resource.Resource, error) {
-	res, err := resource.New(context.Background(),
-		resource.WithHost(),
-		resource.WithProcess(),
-		resource.WithOS(),
-		resource.WithSchemaURL(semconv.SchemaURL),
-		resource.WithAttributes(
-			semconv.ServiceName(serviceName),
-			semconv.ServiceVersion(serviceVersion),
-		),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return resource.Merge(resource.Default(), res)
 }
 
 func newTraceProvider(res *resource.Resource) (*trace.TracerProvider, error) {

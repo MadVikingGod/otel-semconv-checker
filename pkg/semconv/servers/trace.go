@@ -64,23 +64,28 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 	for _, r := range req.ResourceSpans {
 		if r.SchemaUrl != s.resourceVersion {
 			log.Info("incorrect resource version",
+				slog.String("section", "resource"),
 				slog.String("version", r.SchemaUrl),
 				slog.String("expected", s.resourceVersion),
 			)
 		}
-		checkResource(s.resourceGroups, s.resourceIgnore, r.Resource)
+		checkResource(s.resourceGroups, s.resourceIgnore, r.Resource, log.With(
+			slog.String("section", "resource"),
+			slog.String("version", r.SchemaUrl),
+		))
 
 		for _, scope := range r.ScopeSpans {
 			if scope.SchemaUrl != s.resourceVersion {
 				log.Info("incorrect scope version",
-					slog.String("version", scope.SchemaUrl),
+					slog.String("section", "scope"),
+					slog.String("schemaUrl", scope.SchemaUrl),
 					slog.String("expected", s.resourceVersion),
 					slog.Any("scope", scope.Scope),
 				)
 			}
-			log := log
+			log := log.With(slog.String("section", "span"))
 			if scope.Scope != nil {
-				log = slog.With(slog.String("scope.name", scope.Scope.Name))
+				log = log.With(slog.String("scope.name", scope.Scope.Name))
 			}
 			fmt.Println(len(scope.Spans))
 			for _, span := range scope.Spans {
@@ -116,17 +121,17 @@ OUTER:
 	return output
 }
 
-func checkResource(rg, ignore []string, r *pbResource.Resource) {
+func checkResource(rg, ignore []string, r *pbResource.Resource, log *slog.Logger) {
 	if r != nil {
 		missing, extra := semconv.Compare(rg, r.Attributes)
 		missing, extra = filter(missing, ignore), filter(extra, ignore)
 		if len(missing) > 0 {
-			slog.Info("missing attributes",
+			log.Info("missing attributes",
 				slog.Any("attributes", missing),
 			)
 		}
 		if len(extra) > 0 {
-			slog.Info("extra attributes",
+			log.Info("extra attributes",
 				slog.Any("attributes", extra),
 			)
 		}
