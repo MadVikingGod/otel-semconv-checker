@@ -14,5 +14,6 @@ type Attribute struct {
 	Ref string
 	// Type string
 
+	// This is space to hold the prefix.name after parsing.
 	CanonicalId string
 }

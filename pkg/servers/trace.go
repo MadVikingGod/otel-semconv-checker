@@ -42,14 +42,14 @@ func NewTraceService(cfg Config, g map[string]semconv.Group) *TraceServer {
 		}
 		matches = append(matches, traceMatch{
 			match:  reg,
-			group:  semconv.Combine(groups...),
+			group:  semconv.GetAttributes(groups...),
 			ignore: match.Ignore,
 		})
 	}
 
 	return &TraceServer{
 		resourceVersion: semconv.Version,
-		resourceGroups:  semconv.Combine(resourceGroups...),
+		resourceGroups:  semconv.GetAttributes(resourceGroups...),
 		resourceIgnore:  cfg.Resource.Ignore,
 		matches:         matches,
 		reportUnmatched: cfg.ReportUnmatched,

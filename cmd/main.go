@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
-	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv/servers"
+	"github.com/madvikinggod/otel-semconv-checker/pkg/servers"
 	"github.com/spf13/viper"
 	pbLog "go.opentelemetry.io/proto/otlp/collector/logs/v1"
 	pbMetric "go.opentelemetry.io/proto/otlp/collector/metrics/v1"

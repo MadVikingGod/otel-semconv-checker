@@ -22,7 +22,7 @@ func Compare(attrSlice []string, attributes []*pbCommon.KeyValue) (missing []str
 	return missing, extra
 }
 
-func Combine(groups ...Group) []string {
+func GetAttributes(groups ...Group) []string {
 	a := []string{}
 	for _, group := range groups {
 		for _, attr := range group.Attributes {

@@ -19,7 +19,7 @@ type File struct {
 }
 
 func fileError(path string, err error) error {
-	return fmt.Errorf("error parsing %s: %w", path, err.Error())
+	return fmt.Errorf("error parsing %s: %w", path, err)
 }
 
 func ParseGroups() (map[string]Group, error) {
@@ -44,11 +44,15 @@ func ParseGroups() (map[string]Group, error) {
 		}
 		return nil
 	})
-	return flattenGroup(groups), err
+	return denormalizeGroups(groups), err
 }
 
-func flattenGroup(groups map[string]Group) map[string]Group {
+func denormalizeGroups(groups map[string]Group) map[string]Group {
 	attributes := map[string]Attribute{}
+
+	// For all non-reference attributes:
+	// - Make their CanonicalId (prefix+id)
+	// - Create a global lookup for that attribute
 	for _, g := range groups {
 		for _, a := range g.Attributes {
 			if a.Id == "" {
@@ -60,19 +64,18 @@ func flattenGroup(groups map[string]Group) map[string]Group {
 		}
 	}
 
+	for _, g := range groups {
+		for i, a := range g.Attributes {
+			if a.Ref == "" {
+				continue
+			}
+			g.Attributes[i] = attributes[a.Ref]
+		}
+	}
+
 	for id, g := range groups {
 		for g.Extends != "" {
-			prefix := groups[g.Extends].Prefix
 			for _, a := range groups[g.Extends].Attributes {
-				if a.Id == "" {
-					g.Attributes = append(g.Attributes, attributes[a.Ref])
-					continue
-				}
-				if a.CanonicalId != "" {
-					g.Attributes = append(g.Attributes, a)
-					continue
-				}
-				a.CanonicalId = canonicalName(prefix, a.Id)
 				g.Attributes = append(g.Attributes, a)
 			}
 			g.Extends = groups[g.Extends].Extends
