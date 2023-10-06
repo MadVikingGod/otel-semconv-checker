@@ -8,6 +8,12 @@ resource:
   - "resource.name"
   report_additional: true
 trace:
+- match: http.server.*
+  groups:
+  - trace.http.server
+  ignore:
+  -
+  report_additional: true
 - match: xyz.regex
   groups:
   - 

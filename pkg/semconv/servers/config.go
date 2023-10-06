@@ -1,11 +1,12 @@
 package servers
 
 type Config struct {
-	ServerAddress string `mapstructure:"server_address"`
-	Resource      Match
-	Trace         []Match
-	Metric        []Match
-	Log           []Match
+	ServerAddress   string `mapstructure:"server_address"`
+	Resource        Match
+	Trace           []Match
+	Metric          []Match
+	Log             []Match
+	ReportUnmatched bool `mapstructure:"report_unmatched"`
 }
 
 type Match struct {

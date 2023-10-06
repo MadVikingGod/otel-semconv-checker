@@ -19,6 +19,7 @@ type TraceServer struct {
 	resourceGroups  []string
 	resourceIgnore  []string
 	matches         []traceMatch
+	reportUnmatched bool
 }
 
 type traceMatch struct {
@@ -51,6 +52,7 @@ func NewTraceService(cfg Config, g map[string]semconv.Group) *TraceServer {
 		resourceGroups:  semconv.Combine(resourceGroups...),
 		resourceIgnore:  cfg.Resource.Ignore,
 		matches:         matches,
+		reportUnmatched: cfg.ReportUnmatched,
 	}
 }
 
@@ -58,9 +60,10 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 	if req == nil {
 		return nil, nil
 	}
+	log := slog.With("type", "trace")
 	for _, r := range req.ResourceSpans {
 		if r.SchemaUrl != s.resourceVersion {
-			slog.Info("incorrect resource version",
+			log.Info("incorrect resource version",
 				slog.String("version", r.SchemaUrl),
 				slog.String("expected", s.resourceVersion),
 			)
@@ -69,20 +72,29 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 
 		for _, scope := range r.ScopeSpans {
 			if scope.SchemaUrl != s.resourceVersion {
-				slog.Info("incorrect scope version",
+				log.Info("incorrect scope version",
 					slog.String("version", scope.SchemaUrl),
 					slog.String("expected", s.resourceVersion),
 					slog.Any("scope", scope.Scope),
 				)
 			}
+			log := log
+			if scope.Scope != nil {
+				log = slog.With(slog.String("scope.name", scope.Scope.Name))
+			}
 			fmt.Println(len(scope.Spans))
 			for _, span := range scope.Spans {
+				found := false
 				for _, match := range s.matches {
 					if match.match.MatchString(span.Name) {
-						checkSpan(match.group, match.ignore, span)
-					} else {
-						slog.Info("span does not match", "span", span.Name, "match", match.match.String())
+						found = true
+						checkSpan(match.group, match.ignore, span, log)
 					}
+				}
+				if !found && s.reportUnmatched {
+					log.Info("unmatched span",
+						slog.String("name", span.Name),
+					)
 				}
 			}
 		}
@@ -121,18 +133,18 @@ func checkResource(rg, ignore []string, r *pbResource.Resource) {
 	}
 }
 
-func checkSpan(ag, ignore []string, s *pbTrace.Span) {
+func checkSpan(ag, ignore []string, s *pbTrace.Span, log *slog.Logger) {
 	if s != nil {
 		missing, extra := semconv.Compare(ag, s.Attributes)
 		missing, extra = filter(missing, ignore), filter(extra, ignore)
 		if len(missing) > 0 {
-			slog.Info("missing attributes",
+			log.Info("missing attributes",
 				slog.String("name", s.Name),
 				slog.Any("attributes", missing),
 			)
 		}
 		if len(extra) > 0 {
-			slog.Info("extra attributes",
+			log.Info("extra attributes",
 				slog.String("name", s.Name),
 				slog.Any("attributes", extra),
 			)

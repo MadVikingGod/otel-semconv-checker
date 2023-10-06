@@ -34,6 +34,7 @@ var traceReq = &pbTraceCollector.ExportTraceServiceRequest{
 				Attributes: []*pbCommon.KeyValue{
 					StringKV("resource.name", "resource-1"),
 					StringKV("host.id", "host-1"),
+					StringKV("host.type", "stuff"),
 				},
 			},
 			SchemaUrl: "https://opentelemetry.io/schemas/1.21.0",
