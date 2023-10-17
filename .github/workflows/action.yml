@@ -5,6 +5,13 @@ jobs:
   runchecker:
     runs-on: ubuntu-latest
     steps:
+      - name: Install go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+          check-latest: true
+          cache-dependency-path: "**/go.sum"
+
       - name: check out code
         uses: actions/checkout@v4
       - run: |
@@ -13,6 +20,13 @@ jobs:
   runserverclient:
     runs-on: ubuntu-latest
     steps:
+      - name: Install go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+          check-latest: true
+          cache-dependency-path: "**/go.sum"
+
       - name: check out code
         uses: actions/checkout@v4
       - run: |
