@@ -1,7 +1,8 @@
 - [x] setup otel server
 - [x] create example
-- [ ] select a trace by match
-- [ ] match to groups
+- [x] select a trace by match
+- [x] match to groups
 - [x] report missing attributes from group
-- [ ] ignore attributes
-- [ ] report additional attributes
+- [x] ignore attributes
+- [x] report additional attributes
+- [ ] one shot cli option.
