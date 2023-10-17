@@ -4,6 +4,9 @@ on: [push, pull_request]
 jobs:
   runchecker:
     runs-on: ubuntu-latest
+
+    container: golang
+
     steps:
       - name: Install go
         uses: actions/setup-go@v4
