@@ -2,16 +2,16 @@ name: GitHub Actions Demo
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [push, pull_request, workflow_dispatch]
 jobs:
-  Run-SemConv-Checker:
+  RunSemConvChecker:
     runs-on: ubuntu-latest
     steps:
         uses: actions/checkout@v4
       - run: |
         go run ./cmd/
 
-  Run-Server-Client:
+  RunServerClient:
     runs-on: ubuntu-latest
-    needs: Run-SemConv-Checker
+    needs: RunSemConvChecker
     steps:
         uses: actions/checkout@v4
       - run: |
