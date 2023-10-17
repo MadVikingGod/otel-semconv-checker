@@ -7,12 +7,12 @@ jobs:
     steps:
         uses: actions/checkout@v4
       - run: |
-        go run ./cmd/
+          go run ./cmd/
 
   runserverclient:
     runs-on: ubuntu-latest
     steps:
         uses: actions/checkout@v4
       - run: |
-        cd test
-        go run ./http/
+          cd test
+          go run ./http/
