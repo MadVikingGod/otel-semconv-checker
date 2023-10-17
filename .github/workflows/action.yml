@@ -30,5 +30,6 @@ jobs:
       - name: check out code
         uses: actions/checkout@v4
       - run: |
+          sleep 10
           cd test
           go run ./http/
