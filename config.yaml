@@ -30,4 +30,5 @@ metric:
 log:
 report_unmatched: true
 server_address: localhost:4317
+one_shot: true
 

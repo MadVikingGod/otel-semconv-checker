@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"regexp"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
@@ -20,6 +21,7 @@ type TraceServer struct {
 	resourceIgnore  []string
 	matches         []traceMatch
 	reportUnmatched bool
+	oneShot         bool
 }
 
 type traceMatch struct {
@@ -53,6 +55,7 @@ func NewTraceService(cfg Config, g map[string]semconv.Group) *TraceServer {
 		resourceIgnore:  cfg.Resource.Ignore,
 		matches:         matches,
 		reportUnmatched: cfg.ReportUnmatched,
+		oneShot:         cfg.OneShot,
 	}
 }
 
@@ -61,6 +64,7 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 		return nil, nil
 	}
 	log := slog.With("type", "trace")
+	count := 0
 	for _, r := range req.ResourceSpans {
 		if r.SchemaUrl != s.resourceVersion {
 			log.Info("incorrect resource version",
@@ -69,41 +73,51 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 				slog.String("expected", s.resourceVersion),
 			)
 		}
-		checkResource(s.resourceGroups, s.resourceIgnore, r.Resource, log.With(
+		missing, extra := checkResource(s.resourceGroups, s.resourceIgnore, r.Resource)
+		logAttributes(log.With(
 			slog.String("section", "resource"),
 			slog.String("version", r.SchemaUrl),
-		))
+		), missing, extra)
 
 		for _, scope := range r.ScopeSpans {
+			log := log.With(slog.String("section", "span"))
 			if scope.SchemaUrl != s.resourceVersion {
 				log.Info("incorrect scope version",
-					slog.String("section", "scope"),
 					slog.String("schemaUrl", scope.SchemaUrl),
 					slog.String("expected", s.resourceVersion),
 					slog.Any("scope", scope.Scope),
 				)
+				// count++
 			}
-			log := log.With(slog.String("section", "span"))
 			if scope.Scope != nil {
 				log = log.With(slog.String("scope.name", scope.Scope.Name))
 			}
 			fmt.Println(len(scope.Spans))
 			for _, span := range scope.Spans {
 				found := false
+				log := log.With(slog.String("name", span.Name))
 				for _, match := range s.matches {
 					if match.match.MatchString(span.Name) {
 						found = true
-						checkSpan(match.group, match.ignore, span, log)
+						missing, extra := checkSpan(match.group, match.ignore, span)
+						logAttributes(log, missing, extra)
+						count += len(missing)
 					}
 				}
 				if !found && s.reportUnmatched {
-					log.Info("unmatched span",
-						slog.String("name", span.Name),
-					)
+					log.Info("unmatched span")
 				}
 			}
 		}
 	}
+
+	if s.oneShot {
+		if count > 0 {
+			os.Exit(100)
+		}
+		os.Exit(0)
+	}
+
 	return &pbCollectorTrace.ExportTraceServiceResponse{}, nil
 }
 
@@ -121,38 +135,33 @@ OUTER:
 	return output
 }
 
-func checkResource(rg, ignore []string, r *pbResource.Resource, log *slog.Logger) {
+func checkResource(rg, ignore []string, r *pbResource.Resource) (missing, extra []string) {
 	if r != nil {
 		missing, extra := semconv.Compare(rg, r.Attributes)
 		missing, extra = filter(missing, ignore), filter(extra, ignore)
-		if len(missing) > 0 {
-			log.Info("missing attributes",
-				slog.Any("attributes", missing),
-			)
-		}
-		if len(extra) > 0 {
-			log.Info("extra attributes",
-				slog.Any("attributes", extra),
-			)
-		}
+		return missing, extra
 	}
+	return nil, nil
 }
 
-func checkSpan(ag, ignore []string, s *pbTrace.Span, log *slog.Logger) {
+func checkSpan(ag, ignore []string, s *pbTrace.Span) (missing []string, extra []string) {
 	if s != nil {
 		missing, extra := semconv.Compare(ag, s.Attributes)
 		missing, extra = filter(missing, ignore), filter(extra, ignore)
-		if len(missing) > 0 {
-			log.Info("missing attributes",
-				slog.String("name", s.Name),
-				slog.Any("attributes", missing),
-			)
-		}
-		if len(extra) > 0 {
-			log.Info("extra attributes",
-				slog.String("name", s.Name),
-				slog.Any("attributes", extra),
-			)
-		}
+		return missing, extra
+	}
+	return nil, nil
+}
+
+func logAttributes(log *slog.Logger, missing, extra []string) {
+	if len(missing) > 0 {
+		log.Info("missing attributes",
+			slog.Any("attributes", missing),
+		)
+	}
+	if len(extra) > 0 {
+		log.Info("extra attributes",
+			slog.Any("attributes", extra),
+		)
 	}
 }

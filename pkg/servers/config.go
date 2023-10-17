@@ -7,6 +7,7 @@ type Config struct {
 	Metric          []Match
 	Log             []Match
 	ReportUnmatched bool `mapstructure:"report_unmatched"`
+	OneShot         bool `mapstructure:"one_shot"`
 }
 
 type Match struct {
