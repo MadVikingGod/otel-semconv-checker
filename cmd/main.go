@@ -30,7 +30,6 @@ func main() {
 	}
 
 	cfg := servers.Config{}
-	fmt.Println(*config, *oneshot)
 
 	viper.SetConfigFile(*config)
 	if err := viper.ReadInConfig(); err != nil {
