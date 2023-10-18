@@ -11,6 +11,8 @@ import (
 	pbCollectorTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	pbResource "go.opentelemetry.io/proto/otlp/resource/v1"
 	pbTrace "go.opentelemetry.io/proto/otlp/trace/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type TraceServer struct {
@@ -116,6 +118,15 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 			os.Exit(100)
 		}
 		os.Exit(0)
+	}
+
+	if count > 0 {
+		return &pbCollectorTrace.ExportTraceServiceResponse{
+			PartialSuccess: &pbCollectorTrace.ExportTracePartialSuccess{
+				RejectedSpans: int64(count),
+				ErrorMessage:  "missing attributes",
+			},
+		}, status.Error(codes.FailedPrecondition, "missing attributes")
 	}
 
 	return &pbCollectorTrace.ExportTraceServiceResponse{}, nil
