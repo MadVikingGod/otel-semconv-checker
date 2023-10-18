@@ -1,12 +1,4 @@
 resource:
-  groups:
-  - host
-  - os
-  ignore:
-  - "host.id"
-  - "host.name"
-  - "resource.name"
-  report_additional: true
 trace:
 - match: http.server.*
   groups:
@@ -20,15 +12,9 @@ trace:
   ignore:
   -
   report_additional: true
-- match: xyz.regex
-  groups:
-  - 
-  ignore:
-  - 
-  report_additional: true
 metric:
 log:
 report_unmatched: true
 server_address: localhost:4317
-one_shot: false
+one_shot: true
 

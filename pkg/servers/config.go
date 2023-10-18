@@ -37,4 +37,5 @@ trace:
 metric:
 log:
 report_unmatched: true
+server_address: localhost:4317
 `
