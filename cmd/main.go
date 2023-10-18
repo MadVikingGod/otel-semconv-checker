@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log/slog"
 	"net"
@@ -16,7 +17,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+var config = flag.String("cfg", "config.yaml", "The config file to use.")
+var oneshot = flag.Bool("one", false, "The server will only receive one message, and exit 100 if it any attributes are missing.")
+
 func main() {
+	flag.Parse()
 
 	g, err := semconv.ParseGroups()
 	if err != nil {
@@ -24,17 +29,22 @@ func main() {
 		return
 	}
 
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
+	cfg := servers.Config{}
+	fmt.Println(*config, *oneshot)
+
+	viper.SetConfigFile(*config)
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Println(err)
 		viper.SetConfigType("yaml")
 		viper.ReadConfig(strings.NewReader(servers.DefaultConfig))
 	}
-	cfg := servers.Config{}
 	if err := viper.Unmarshal(&cfg); err != nil {
 		slog.Error("failed to unmarshal config", "error", err)
 		return
+	}
+
+	if *oneshot {
+		cfg.OneShot = true
 	}
 
 	lis, err := net.Listen("tcp", cfg.ServerAddress)
