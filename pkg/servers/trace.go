@@ -67,6 +67,7 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 	}
 	log := slog.With("type", "trace")
 	count := 0
+	names := []string{}
 	for _, r := range req.ResourceSpans {
 		if r.SchemaUrl != s.resourceVersion {
 			log.Info("incorrect resource version",
@@ -104,6 +105,7 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 						missing, extra := checkSpan(match.group, match.ignore, span)
 						logAttributes(log, missing, extra)
 						count += len(missing)
+						names = append(names, scope.Scope.Name)
 					}
 				}
 				if !found && s.reportUnmatched {
@@ -126,7 +128,7 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 				RejectedSpans: int64(count),
 				ErrorMessage:  "missing attributes",
 			},
-		}, status.Error(codes.FailedPrecondition, "missing attributes")
+		}, status.Error(codes.FailedPrecondition, fmt.Sprintf("missing attributes: %v", names))
 	}
 
 	return &pbCollectorTrace.ExportTraceServiceResponse{}, nil
