@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-func setupOTelSDK(res *resource.Resource) (shutdown func(context.Context) error, err error) {
+func setupOTelSDK(url string) (shutdown func(context.Context) error, err error) {
 
 	ctx := context.Background()
 	var shutdownFuncs []func(context.Context) error
@@ -36,7 +36,7 @@ func setupOTelSDK(res *resource.Resource) (shutdown func(context.Context) error,
 	}
 
 	// Setup trace provider.
-	tracerProvider, err := newTraceProvider(res)
+	tracerProvider, err := newTraceProvider(url)
 	if err != nil {
 		handleErr(err)
 		return
@@ -45,7 +45,7 @@ func setupOTelSDK(res *resource.Resource) (shutdown func(context.Context) error,
 	otel.SetTracerProvider(tracerProvider)
 
 	// Setup meter provider.
-	meterProvider, err := newMeterProvider(res)
+	meterProvider, err := newMeterProvider(url)
 	if err != nil {
 		handleErr(err)
 		return
@@ -56,8 +56,13 @@ func setupOTelSDK(res *resource.Resource) (shutdown func(context.Context) error,
 	return
 }
 
-func newTraceProvider(res *resource.Resource) (*trace.TracerProvider, error) {
-	traceExporter, err := otlptracegrpc.New(context.Background(), otlptracegrpc.WithInsecure())
+func newTraceProvider(url string) (*trace.TracerProvider, error) {
+	res := resource.NewSchemaless()
+
+	traceExporter, err := otlptracegrpc.New(context.Background(),
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithEndpoint(url),
+	)
 	// traceExporter, err := stdouttrace.New()
 	if err != nil {
 		return nil, err
@@ -72,8 +77,13 @@ func newTraceProvider(res *resource.Resource) (*trace.TracerProvider, error) {
 	return traceProvider, nil
 }
 
-func newMeterProvider(res *resource.Resource) (*metric.MeterProvider, error) {
-	metricExporter, err := otlpmetricgrpc.New(context.Background())
+func newMeterProvider(url string) (*metric.MeterProvider, error) {
+	res := resource.NewSchemaless()
+
+	metricExporter, err := otlpmetricgrpc.New(context.Background(),
+		otlpmetricgrpc.WithInsecure(),
+		otlpmetricgrpc.WithEndpoint(url),
+	)
 	if err != nil {
 		return nil, err
 	}
