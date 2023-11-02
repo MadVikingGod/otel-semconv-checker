@@ -8,14 +8,14 @@ import (
 	"regexp"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
-	pbCollectorTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	pbTrace "go.opentelemetry.io/proto/otlp/trace/v1"
+	pbCollectorMetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
+	pbMetrics "go.opentelemetry.io/proto/otlp/metrics/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type TraceServer struct {
-	pbCollectorTrace.UnimplementedTraceServiceServer
+type MetricsServer struct {
+	pbCollectorMetrics.UnimplementedMetricsServiceServer
 
 	resourceVersion string
 	resourceGroups  []string
@@ -25,13 +25,13 @@ type TraceServer struct {
 	oneShot         bool
 }
 
-func NewTraceService(cfg Config, g map[string]semconv.Group) *TraceServer {
+func NewMetricsService(cfg Config, g map[string]semconv.Group) *MetricsServer {
 	resourceGroups := []semconv.Group{}
 	for _, group := range cfg.Resource.Groups {
 		resourceGroups = append(resourceGroups, g[group])
 	}
 	matches := []matchDef{}
-	for _, match := range cfg.Trace {
+	for _, match := range cfg.Metrics {
 		reg := regexp.MustCompile(match.Match)
 		groups := []semconv.Group{}
 		for _, group := range match.Groups {
@@ -44,7 +44,7 @@ func NewTraceService(cfg Config, g map[string]semconv.Group) *TraceServer {
 		})
 	}
 
-	return &TraceServer{
+	return &MetricsServer{
 		resourceVersion: semconv.Version,
 		resourceGroups:  semconv.GetAttributes(resourceGroups...),
 		resourceIgnore:  cfg.Resource.Ignore,
@@ -54,14 +54,14 @@ func NewTraceService(cfg Config, g map[string]semconv.Group) *TraceServer {
 	}
 }
 
-func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTraceServiceRequest) (*pbCollectorTrace.ExportTraceServiceResponse, error) {
+func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.ExportMetricsServiceRequest) (*pbCollectorMetrics.ExportMetricsServiceResponse, error) {
 	if req == nil {
 		return nil, nil
 	}
-	log := slog.With("type", "trace")
+	log := slog.With("type", "metrics")
 	count := 0
 	names := []string{}
-	for _, r := range req.ResourceSpans {
+	for _, r := range req.ResourceMetrics {
 		if r.SchemaUrl != s.resourceVersion {
 			log.Info("incorrect resource version",
 				slog.String("section", "resource"),
@@ -75,8 +75,8 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 			slog.String("version", r.SchemaUrl),
 		), missing, extra)
 
-		for _, scope := range r.ScopeSpans {
-			log := log.With(slog.String("section", "span"))
+		for _, scope := range r.ScopeMetrics {
+			log := log.With(slog.String("section", "metric"))
 			if scope.SchemaUrl != s.resourceVersion {
 				log.Info("incorrect scope version",
 					slog.String("schemaUrl", scope.SchemaUrl),
@@ -88,21 +88,21 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 			if scope.Scope != nil {
 				log = log.With(slog.String("scope.name", scope.Scope.Name))
 			}
-			fmt.Println(len(scope.Spans))
-			for _, span := range scope.Spans {
+			fmt.Println(len(scope.Metrics))
+			for _, metric := range scope.Metrics {
 				found := false
-				log := log.With(slog.String("name", span.Name))
+				log := log.With(slog.String("name", metric.Name))
 				for _, match := range s.matches {
-					if match.name.MatchString(span.Name) {
+					if match.name.MatchString(metric.Name) {
 						found = true
-						missing, extra := checkSpan(match.group, match.ignore, span)
+						missing, extra := checkMetric(log, match.group, match.ignore, metric)
 						logAttributes(log, missing, extra)
 						count += len(missing)
 						names = append(names, scope.Scope.Name)
 					}
 				}
 				if !found && s.reportUnmatched {
-					log.Info("unmatched span")
+					log.Info("unmatched metric")
 				}
 			}
 		}
@@ -116,37 +116,43 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 	}
 
 	if count > 0 {
-		return &pbCollectorTrace.ExportTraceServiceResponse{
-			PartialSuccess: &pbCollectorTrace.ExportTracePartialSuccess{
-				RejectedSpans: int64(count),
+		return &pbCollectorMetrics.ExportMetricsServiceResponse{
+			PartialSuccess: &pbCollectorMetrics.ExportMetricsPartialSuccess{
+				RejectedDataPoints: int64(count),
 				ErrorMessage:  "missing attributes",
 			},
 		}, status.Error(codes.FailedPrecondition, fmt.Sprintf("missing attributes: %v", names))
 	}
 
-	return &pbCollectorTrace.ExportTraceServiceResponse{}, nil
+	return &pbCollectorMetrics.ExportMetricsServiceResponse{}, nil
 }
 
-func filter(input, removed []string) []string {
-	output := []string{}
-OUTER:
-	for _, in := range input {
-		for _, rem := range removed {
-			if in == rem {
-				continue OUTER
-			}
-		}
-		output = append(output, in)
+func checkMetric(log *slog.Logger, ag, ignore []string, m *pbMetrics.Metric) (missing []string, extra []string) {
+	if m == nil {
+		return nil, nil
 	}
-	return output
-}
 
-func checkSpan(ag, ignore []string, s *pbTrace.Span) (missing []string, extra []string) {
-	if s != nil {
-		missing, extra := semconv.Compare(ag, s.Attributes)
-		missing, extra = filter(missing, ignore), filter(extra, ignore)
-		return missing, extra
+	switch d := m.Data.(type) {
+	case *pbMetrics.Metric_Gauge:
+		missing, extra = checkNumberDataPoints(ag, ignore, d.Gauge.DataPoints)
+	case *pbMetrics.Metric_Sum:
+		missing, extra = checkNumberDataPoints(ag, ignore, d.Sum.DataPoints)
+		
+		// TODO other types
+	default:
+		log.Warn("Unsupported metric type: %+v", m.Data)
 	}
-	return nil, nil
+	
+	return missing, extra
 }
 
+func checkNumberDataPoints(ag, ignore []string, ps []*pbMetrics.NumberDataPoint) (missing []string, extra[] string) {
+	for _, p := range ps {
+		m, e := semconv.Compare(ag, p.Attributes)
+		missing = append(missing, m...)
+		extra = append(extra, e...)
+
+	}
+	missing, extra = filter(missing, ignore), filter(extra, ignore)
+	return missing, extra
+}

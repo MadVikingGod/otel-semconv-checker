@@ -26,7 +26,7 @@ trace:
   ignore:
   - 
   report_additional: true
-metric:
+metrics:
 log:
 report_unmatched: true
 server_address: 0.0.0.0:4317
