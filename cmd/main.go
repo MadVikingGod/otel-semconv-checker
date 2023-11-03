@@ -54,7 +54,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, g))
-	pbMetric.RegisterMetricsServiceServer(grpcServer, &metricServer{g: g})
+	pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, g))
 	pbLog.RegisterLogsServiceServer(grpcServer, &logServer{g: g})
 
 	slog.Info("starting server", "address", cfg.ServerAddress)
@@ -62,15 +62,6 @@ func main() {
 		slog.Error("failed to serve", "error", err)
 		return
 	}
-}
-
-type metricServer struct {
-	pbMetric.UnimplementedMetricsServiceServer
-	g map[string]semconv.Group
-}
-
-func (s *metricServer) Export(ctx context.Context, req *pbMetric.ExportMetricsServiceRequest) (*pbMetric.ExportMetricsServiceResponse, error) {
-	return nil, nil
 }
 
 type logServer struct {
