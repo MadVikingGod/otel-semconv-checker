@@ -11,6 +11,7 @@ type Config struct {
 }
 
 type Match struct {
+	SemanticVersion  string `mapstructure:"semantic_version"`
 	Match            string
 	Groups           []string
 	Ignore           []string
@@ -23,9 +24,7 @@ resource:
   - host
   - os
   ignore:
-  - "host.id"
-  - "host.name"
-  - "resource.name"
+  -
   report_additional: true
 trace:
 - match: http.server.*

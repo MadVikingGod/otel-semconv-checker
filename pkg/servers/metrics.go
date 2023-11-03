@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"regexp"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	pbCollectorMetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
@@ -25,27 +24,25 @@ type MetricsServer struct {
 	oneShot         bool
 }
 
-func NewMetricsService(cfg Config, g map[string]semconv.Group) *MetricsServer {
+func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *MetricsServer {
+	if cfg.Resource.SemanticVersion == "" {
+		cfg.Resource.SemanticVersion = semconv.DefaultVersion
+	}
+
 	resourceGroups := []semconv.Group{}
 	for _, group := range cfg.Resource.Groups {
-		resourceGroups = append(resourceGroups, g[group])
+		resourceGroups = append(resourceGroups, svs[cfg.Resource.SemanticVersion].Groups[group])
 	}
 	matches := []matchDef{}
 	for _, match := range cfg.Metrics {
-		reg := regexp.MustCompile(match.Match)
-		groups := []semconv.Group{}
-		for _, group := range match.Groups {
-			groups = append(groups, g[group])
+		if match.SemanticVersion == "" {
+			match.SemanticVersion = semconv.DefaultVersion
 		}
-		matches = append(matches, matchDef{
-			name:   reg,
-			group:  semconv.GetAttributes(groups...),
-			ignore: match.Ignore,
-		})
+		matches = append(matches, newMatchDef(match, svs[match.SemanticVersion].Groups))
 	}
 
 	return &MetricsServer{
-		resourceVersion: semconv.Version,
+		resourceVersion: semconv.DefaultVersion,
 		resourceGroups:  semconv.GetAttributes(resourceGroups...),
 		resourceIgnore:  cfg.Resource.Ignore,
 		matches:         matches,
@@ -119,7 +116,7 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 		return &pbCollectorMetrics.ExportMetricsServiceResponse{
 			PartialSuccess: &pbCollectorMetrics.ExportMetricsPartialSuccess{
 				RejectedDataPoints: int64(count),
-				ErrorMessage:  "missing attributes",
+				ErrorMessage:       "missing attributes",
 			},
 		}, status.Error(codes.FailedPrecondition, fmt.Sprintf("missing attributes: %v", names))
 	}
@@ -137,16 +134,16 @@ func checkMetric(log *slog.Logger, ag, ignore []string, m *pbMetrics.Metric) (mi
 		missing, extra = checkNumberDataPoints(ag, ignore, d.Gauge.DataPoints)
 	case *pbMetrics.Metric_Sum:
 		missing, extra = checkNumberDataPoints(ag, ignore, d.Sum.DataPoints)
-		
+
 		// TODO other types
 	default:
 		log.Warn("Unsupported metric type: %+v", m.Data)
 	}
-	
+
 	return missing, extra
 }
 
-func checkNumberDataPoints(ag, ignore []string, ps []*pbMetrics.NumberDataPoint) (missing []string, extra[] string) {
+func checkNumberDataPoints(ag, ignore []string, ps []*pbMetrics.NumberDataPoint) (missing []string, extra []string) {
 	for _, p := range ps {
 		m, e := semconv.Compare(ag, p.Attributes)
 		missing = append(missing, m...)

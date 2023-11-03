@@ -4,15 +4,26 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"path"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-const Version = "https://opentelemetry.io/schemas/1.21.0"
+const DefaultVersion = "https://opentelemetry.io/schemas/1.21.0"
 
 //go:embed src/*
 var files embed.FS
+
+type versions struct {
+	Versions []SemanticVersion `yaml:"versions"`
+}
+
+type SemanticVersion struct {
+	Url    string `yaml:"url"`
+	Dir    string `yaml:"dir"`
+	Groups map[string]Group
+}
 
 type File struct {
 	Groups []Group
@@ -22,9 +33,33 @@ func fileError(path string, err error) error {
 	return fmt.Errorf("error parsing %s: %w", path, err)
 }
 
-func ParseGroups() (map[string]Group, error) {
+func ParseSemanticVersion() (map[string]SemanticVersion, error) {
+	var v versions
+	b, err := files.ReadFile("src/versions.yaml")
+	if err != nil {
+		return nil, err
+	}
+	if err := yaml.Unmarshal(b, &v); err != nil {
+		return nil, err
+	}
+	versions := make(map[string]SemanticVersion)
+	for _, v := range v.Versions {
+		groups, err := ParseGroups(path.Join("src", v.Dir))
+		if err != nil {
+			return nil, err
+		}
+		v.Groups = groups
+		versions[v.Url] = v
+	}
+	return versions, nil
+}
+
+func ParseGroups(dir string) (map[string]Group, error) {
 	groups := make(map[string]Group)
-	err := fs.WalkDir(files, "src", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(files, dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if !strings.HasSuffix(d.Name(), ".yaml") {
 			return nil
 		}
