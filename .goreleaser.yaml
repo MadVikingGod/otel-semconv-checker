@@ -76,3 +76,7 @@ docker_manifests:
     image_templates:
     - "ghcr.io/madvikinggod/semantic-convention-checker:{{ .Version }}-amd64"
     - "ghcr.io/madvikinggod/semantic-convention-checker:{{ .Version }}-arm64v8"
+  - name_template: "ghcr.io/madvikinggod/semantic-convention-checker:latest"
+    image_templates:
+    - "ghcr.io/madvikinggod/semantic-convention-checker:{{ .Version }}-amd64"
+    - "ghcr.io/madvikinggod/semantic-convention-checker:{{ .Version }}-arm64v8"
