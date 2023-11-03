@@ -23,7 +23,7 @@ var oneshot = flag.Bool("one", false, "The server will only receive one message,
 func main() {
 	flag.Parse()
 
-	g, err := semconv.ParseGroups()
+	svs, err := semconv.ParseSemanticVersion()
 	if err != nil {
 		slog.Error("failed to parse groups", "error", err)
 		return
@@ -53,9 +53,9 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, g))
-	pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, g))
-	pbLog.RegisterLogsServiceServer(grpcServer, &logServer{g: g})
+	pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, svs))
+	pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, svs))
+	pbLog.RegisterLogsServiceServer(grpcServer, &logServer{g: nil})
 
 	slog.Info("starting server", "address", cfg.ServerAddress)
 	if err := grpcServer.Serve(lis); err != nil {

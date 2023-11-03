@@ -9,7 +9,7 @@ import (
 
 // NOTE ALL THESE ARE DEPENDANT ON THE SEMCONV.  THEY MAY CHANGE WITH THE SEMCONV.
 func TestGetAttributes(t *testing.T) {
-	groups, err := ParseGroups()
+	groups, err := ParseGroups("src/v1.21.0")
 	require.NoError(t, err)
 	tests := []struct {
 		name   string

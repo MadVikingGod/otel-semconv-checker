@@ -1,0 +1,7 @@
+versions:
+  - url: "https://opentelemetry.io/schemas/1.20.0"
+    dir: v1.20.0
+  - url: "https://opentelemetry.io/schemas/1.21.0"
+    dir: v1.21.0
+  - url: "https://opentelemetry.io/schemas/1.22.0"
+    dir: v1.22.0

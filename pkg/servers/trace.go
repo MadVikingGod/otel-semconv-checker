@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"regexp"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	pbCollectorTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
@@ -25,27 +24,25 @@ type TraceServer struct {
 	oneShot         bool
 }
 
-func NewTraceService(cfg Config, g map[string]semconv.Group) *TraceServer {
+func NewTraceService(cfg Config, svs map[string]semconv.SemanticVersion) *TraceServer {
+	if cfg.Resource.SemanticVersion == "" {
+		cfg.Resource.SemanticVersion = semconv.DefaultVersion
+	}
+
 	resourceGroups := []semconv.Group{}
 	for _, group := range cfg.Resource.Groups {
-		resourceGroups = append(resourceGroups, g[group])
+		resourceGroups = append(resourceGroups, svs[cfg.Resource.SemanticVersion].Groups[group])
 	}
 	matches := []matchDef{}
 	for _, match := range cfg.Trace {
-		reg := regexp.MustCompile(match.Match)
-		groups := []semconv.Group{}
-		for _, group := range match.Groups {
-			groups = append(groups, g[group])
+		if match.SemanticVersion == "" {
+			match.SemanticVersion = semconv.DefaultVersion
 		}
-		matches = append(matches, matchDef{
-			name:   reg,
-			group:  semconv.GetAttributes(groups...),
-			ignore: match.Ignore,
-		})
+		matches = append(matches, newMatchDef(match, svs[match.SemanticVersion].Groups))
 	}
 
 	return &TraceServer{
-		resourceVersion: semconv.Version,
+		resourceVersion: semconv.DefaultVersion,
 		resourceGroups:  semconv.GetAttributes(resourceGroups...),
 		resourceIgnore:  cfg.Resource.Ignore,
 		matches:         matches,
@@ -149,4 +146,3 @@ func checkSpan(ag, ignore []string, s *pbTrace.Span) (missing []string, extra []
 	}
 	return nil, nil
 }
-

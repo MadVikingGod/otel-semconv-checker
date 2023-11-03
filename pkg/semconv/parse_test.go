@@ -7,7 +7,23 @@ import (
 )
 
 func TestParseGroups(t *testing.T) {
-	groups, err := ParseGroups()
+	tests := []string{
+		"src/v1.20.0",
+		"src/v1.21.0",
+		"src/v1.22.0",
+	}
+
+	for _, dir := range tests {
+		t.Run(dir, func(t *testing.T) {
+			testParseGroups(t, dir)
+		})
+	}
+
+}
+
+func testParseGroups(t *testing.T, dir string) {
+
+	groups, err := ParseGroups(dir)
 
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(groups), 1)
@@ -24,4 +40,11 @@ func TestParseGroups(t *testing.T) {
 			assert.Empty(t, attr.Ref)
 		}
 	}
+}
+
+func TestParseSemanticVersion(t *testing.T) {
+	versions, err := ParseSemanticVersion()
+
+	assert.NoError(t, err)
+	assert.Len(t, versions, 3)
 }
