@@ -1,0 +1,4 @@
+FROM alpine
+ENTRYPOINT ["/app/semantic-convention-checker"]
+COPY semantic-convention-checker /app/semantic-convention-checker
+COPY config.yaml /app/config.yaml
