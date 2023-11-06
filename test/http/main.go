@@ -6,23 +6,24 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	"go.opentelemetry.io/otel"
+	"google.golang.org/grpc/status"
 )
 
 func main() {
-	serviceName := "e2e.http"
-	serviceVersion := "v0.0.1"
-	// Setup resource.
-	res, err := newResource(serviceName, serviceVersion)
-	if err != nil {
-		panic(err)
-	}
 
-	shutdown, err := setupOTelSDK(res)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(cause error) {
+		fmt.Println("ERROR:", cause)
+		if _, ok := status.FromError(cause); ok {
+			os.Exit(101)
+		}
+	}))
+
+	shutdown, err := setupOTelSDK("localhost:4317")
 
 	mux := http.NewServeMux()
 	mux.Handle("/echo", otelhttp.NewHandler(http.HandlerFunc(hello), "http.server.echo"))
@@ -57,22 +58,4 @@ func formatter(operation string, r *http.Request) string {
 
 func hello(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, "Hello World")
-}
-
-func newResource(serviceName, serviceVersion string) (*resource.Resource, error) {
-	res, err := resource.New(context.Background(),
-		resource.WithHost(),
-		resource.WithProcess(),
-		resource.WithOS(),
-		resource.WithSchemaURL(semconv.SchemaURL),
-		resource.WithAttributes(
-			semconv.ServiceName(serviceName),
-			semconv.ServiceVersion(serviceVersion),
-		),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return resource.Merge(resource.Default(), res)
 }
