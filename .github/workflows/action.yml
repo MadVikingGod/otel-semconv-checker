@@ -1,8 +1,8 @@
-name: GitHub Actions Demo
+name: Go Tests
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [pull_request]
 jobs:
-  Explore-GitHub-Actions:
+  go-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
