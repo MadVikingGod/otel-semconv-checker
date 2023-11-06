@@ -1,12 +1,14 @@
 resource:
 trace:
-- match: http.server.*
+- semantic_version: v1.20.0
+  match: http.server.*
   groups:
   - trace.http.server
   ignore:
   -
   report_additional: true
-- match: http.client.*
+- semantic_version: v1.20.0
+  match: http.client.*
   groups:
   - trace.http.client
   ignore:
@@ -15,6 +17,6 @@ trace:
 metric:
 log:
 report_unmatched: true
-server_address: localhost:4317
-one_shot: true
+server_address: 0.0.0.0:4317
+one_shot: false
 
