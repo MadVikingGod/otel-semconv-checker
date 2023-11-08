@@ -18,7 +18,6 @@ import (
 )
 
 var config = flag.String("cfg", "config.yaml", "The config file to use.")
-var oneshot = flag.Bool("one", false, "The server will only receive one message, and exit 100 if it any attributes are missing.")
 
 func main() {
 	flag.Parse()
@@ -40,10 +39,6 @@ func main() {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		slog.Error("failed to unmarshal config", "error", err)
 		return
-	}
-
-	if *oneshot {
-		cfg.OneShot = true
 	}
 
 	lis, err := net.Listen("tcp", cfg.ServerAddress)
