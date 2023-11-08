@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	pbCollectorMetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
@@ -21,7 +20,6 @@ type MetricsServer struct {
 	resourceIgnore  []string
 	matches         []matchDef
 	reportUnmatched bool
-	oneShot         bool
 }
 
 func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *MetricsServer {
@@ -47,7 +45,6 @@ func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *Metr
 		resourceIgnore:  cfg.Resource.Ignore,
 		matches:         matches,
 		reportUnmatched: cfg.ReportUnmatched,
-		oneShot:         cfg.OneShot,
 	}
 }
 
@@ -103,13 +100,6 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 				}
 			}
 		}
-	}
-
-	if s.oneShot {
-		if count > 0 {
-			os.Exit(100)
-		}
-		os.Exit(0)
 	}
 
 	if count > 0 {
