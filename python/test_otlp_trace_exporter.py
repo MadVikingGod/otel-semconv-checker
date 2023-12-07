@@ -12,7 +12,7 @@ resource = Resource(attributes={
 
 provider = TracerProvider(resource=resource)
 processor = SimpleSpanProcessor(
-    OTLPSpanExporter(endpoint="your-endpoint-here")
+    OTLPSpanExporter(endpoint="0.0.0.0:4317")
 )
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
