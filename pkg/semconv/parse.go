@@ -1,4 +1,6 @@
-package semconv
+// SPDX-License-Identifier: Apache-2.0
+
+packagesemconv
 
 import (
 	"embed"

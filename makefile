@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 .DEFAULT_GOAL := build
 
 .PHONY: build clean test lint test-e2e release default
@@ -22,3 +24,6 @@ test-e2e:
 
 lint:
 	docker run -t --rm -v $$(pwd):/app -v ~/.cache/golangci-lint/v1.55.2:/root/.cache -w /app golangci/golangci-lint:v1.55.2 golangci-lint run -v
+
+license:
+	npx github:viperproject/check-license-header#v1 check --config .github/license-config.json

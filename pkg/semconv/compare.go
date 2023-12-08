@@ -1,4 +1,6 @@
-package semconv
+// SPDX-License-Identifier: Apache-2.0
+
+packagesemconv
 
 import pbCommon "go.opentelemetry.io/proto/otlp/common/v1"
 

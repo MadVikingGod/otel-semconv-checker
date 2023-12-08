@@ -110,3 +110,17 @@ jobs:
         run: |
           git diff-index --cached HEAD -- && \
           git diff-files
+  license:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check license headers
+        uses: viperproject/check-license-header@v2
+        with:
+          path: .
+          config: .github/license-config.json
+          strict: false
+

@@ -1,4 +1,6 @@
-package semconv
+// SPDX-License-Identifier: Apache-2.0
+
+packagesemconv
 
 type Group struct {
 	Id         string

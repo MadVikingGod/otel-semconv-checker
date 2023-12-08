@@ -1,4 +1,6 @@
-package servers
+// SPDX-License-Identifier: Apache-2.0
+
+packageservers
 
 type Config struct {
 	ServerAddress   string `mapstructure:"server_address"`

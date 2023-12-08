@@ -1,0 +1,19 @@
+[
+    {
+        "include": [
+            "cmd/**/*.go",
+            "pkg/**/*.go",
+            "test/**/*.go"
+        ],
+        "exclude": [
+            "pkg/semconv/src/**"
+        ],
+        "license": "./.github/license-check/header-apache2.0.txt"
+    },
+    {
+        "include": [
+            "makefile"
+        ],
+        "license": ".github/license-check/makeheader-apache2.0.txt"
+    }
+]
