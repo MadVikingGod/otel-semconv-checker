@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-packagesemconv
+package semconv
 
 import (
 	"testing"

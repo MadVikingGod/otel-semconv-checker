@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-packageservers
+package servers
 
 import (
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"

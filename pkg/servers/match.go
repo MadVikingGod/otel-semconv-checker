@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-packageservers
+package servers
 
 import (
 	"regexp"
