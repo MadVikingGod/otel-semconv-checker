@@ -1,4 +1,4 @@
-name: ci
+name: lint
 on:
   push:
     branches:
@@ -52,22 +52,6 @@ jobs:
 
           # Optional: The mode to install golangci-lint. It can be 'binary' or 'goinstall'.
           # install-mode: "goinstall"
-  go-test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version-file: go.work
-          cache-dependency-path: |
-             go.sum
-             test/go.sum
-      - name: Run Go tests
-        run: go test -v ./...
   go-fmt:
     runs-on: ubuntu-latest
     steps:

@@ -1,4 +1,4 @@
-name: Go Tests
+name: Tests
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [pull_request]
 jobs:
@@ -15,3 +15,18 @@ jobs:
           go-version-file: go.work
       - name: Run Go tests
         run: go test -v ./...
+  go-e2e-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: go.work
+      - name: Run Go tests
+        run: |
+          cd test/go;
+          go test -v ./...
