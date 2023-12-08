@@ -18,10 +18,14 @@ clean:
 test:
 	go test -timeout 60s ./...
 
-test-e2e:
-	cd test; \
+# TODO: make the Prerequisites every directory under test/ when this get bigger than 3.
+test-e2e: test-e2e/go
+
+test-e2e/go:
+	cd test/go; \
 	go test -timeout 60s -v ./...
 
+# TODO: split this out for linting the server and the e2e tests.
 lint:
 	docker run -t --rm -v $$(pwd):/app -v ~/.cache/golangci-lint/v1.55.2:/root/.cache -w /app golangci/golangci-lint:v1.55.2 golangci-lint run -v
 
