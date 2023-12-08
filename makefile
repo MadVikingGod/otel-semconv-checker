@@ -2,11 +2,13 @@
 
 .DEFAULT_GOAL := build
 
-.PHONY: build clean test lint test-e2e release default
+.PHONY: build clean test lint test-e2e release default license precommit go-fmt
 default: build
 
 release: clean test lint
 	goreleaser build --clean
+
+precommit: clean go-fmt test lint license test-e2e
 
 build: test lint
 	go build -o ./dist/ ./cmd/
@@ -31,3 +33,8 @@ lint:
 
 license:
 	npx github:viperproject/check-license-header#v1 check --config .github/license-config.json
+
+go-fmt:
+	go fmt ./...
+	cd test/go
+	go fmt ./...
