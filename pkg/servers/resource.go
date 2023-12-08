@@ -1,7 +1,7 @@
 package servers
 
 import (
-  "github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
+	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	pbResource "go.opentelemetry.io/proto/otlp/resource/v1"
 )
 

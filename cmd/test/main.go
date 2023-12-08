@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	pbTraceCollector "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	pbCommon "go.opentelemetry.io/proto/otlp/common/v1"
@@ -13,7 +14,8 @@ import (
 )
 
 func main() {
-	conn, err := grpc.Dial("localhost:4317", grpc.WithInsecure())
+
+	conn, err := grpc.Dial("localhost:4317", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		panic(err)
 	}

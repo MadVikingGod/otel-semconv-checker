@@ -1,7 +1,7 @@
 package servers
 
 import (
-		"log/slog"
+	"log/slog"
 )
 
 func logAttributes(log *slog.Logger, missing, extra []string) {
