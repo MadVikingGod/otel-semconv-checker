@@ -110,9 +110,7 @@ func denormalizeGroups(groups map[string]Group) map[string]Group {
 
 	for id, g := range groups {
 		for g.Extends != "" {
-			for _, a := range groups[g.Extends].Attributes {
-				g.Attributes = append(g.Attributes, a)
-			}
+			g.Attributes = append(g.Attributes, groups[g.Extends].Attributes...)
 			g.Extends = groups[g.Extends].Extends
 		}
 		for i, a := range g.Attributes {

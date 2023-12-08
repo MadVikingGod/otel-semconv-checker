@@ -34,7 +34,7 @@ func main() {
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Println(err)
 		viper.SetConfigType("yaml")
-		viper.ReadConfig(strings.NewReader(servers.DefaultConfig))
+		_ = viper.ReadConfig(strings.NewReader(servers.DefaultConfig))
 	}
 	if err := viper.Unmarshal(&cfg); err != nil {
 		slog.Error("failed to unmarshal config", "error", err)
