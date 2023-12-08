@@ -60,13 +60,13 @@ class OTLPTestSpanExporter(OTLPSpanExporter):
                         metadata=self._headers,
                         timeout=self._timeout,
                     )
-                    set_trace()
                     result
 
                     return self._result.SUCCESS
 
                 except RpcError as error:
 
+                    set_trace()
                     if error.code() in [
                         StatusCode.CANCELLED,
                         StatusCode.DEADLINE_EXCEEDED,
@@ -134,9 +134,11 @@ tracer = trace.get_tracer("tracer_name")
 
 def test_case():
 
-    with tracer.start_as_current_span("0"):
-        with tracer.start_as_current_span("1"):
-            with tracer.start_as_current_span("2") as span:
+    span_name_prefix = "http.server."
+
+    with tracer.start_as_current_span(f"{span_name_prefix}0"):
+        with tracer.start_as_current_span(f"{span_name_prefix}1"):
+            with tracer.start_as_current_span(f"{span_name_prefix}2") as span:
                 print("done")
 
     processor.on_end(span)
