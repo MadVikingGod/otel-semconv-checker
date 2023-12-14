@@ -35,10 +35,11 @@ func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *Metr
 	}
 	matches := []matchDef{}
 	for _, match := range cfg.Metrics {
-		if match.SemanticVersion == "" {
+		groups, ok := svs[match.SemanticVersion]
+		if !ok {
 			match.SemanticVersion = semconv.DefaultVersion
 		}
-		matches = append(matches, newMatchDef(match, svs[match.SemanticVersion].Groups))
+		matches = append(matches, newMatchDef(match, groups.Groups))
 	}
 
 	return &MetricsServer{
