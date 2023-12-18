@@ -6,7 +6,7 @@ require (
 	github.com/spf13/viper v1.18.1
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/proto/otlp v1.0.0
-	google.golang.org/grpc v1.59.0
+	google.golang.org/grpc v1.60.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
