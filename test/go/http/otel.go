@@ -65,7 +65,6 @@ func newTraceProvider(url string) (*trace.TracerProvider, error) {
 		otlptracegrpc.WithInsecure(),
 		otlptracegrpc.WithEndpoint(url),
 	)
-	// traceExporter, err := stdouttrace.New()
 	if err != nil {
 		return nil, err
 	}
