@@ -48,6 +48,9 @@ class OTLPTestSpanExporter(OTLPSpanExporter):
     def _export(
         self, data: Union[TypingSequence[ReadableSpan], MetricsData]
     ) -> ExportResultT:
+
+        from ipdb import set_trace
+        set_trace()
         # After the call to shutdown, subsequent calls to Export are
         # not allowed and should return a Failure result.
         if self._shutdown:
@@ -142,12 +145,12 @@ resource = Resource(attributes={
 
 provider = TracerProvider(resource=resource)
 processor = SimpleTestSpanProcessor(
-    OTLPTestSpanExporter(insecure=True, endpoint="0.0.0.0:4317")
+    OTLPTestSpanExporter(insecure=True, endpoint="0.0.0.0:4318")
 )
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
 
-tracer = trace.get_tracer("tracer_name")
+tracer = trace.get_tracer("tracer_namesdfdsf")
 
 
 def test_requests():
@@ -166,7 +169,7 @@ def test_requests():
 
 def test_manual():
 
-    span_name_prefix = "hdfttp.server."
+    span_name_prefix = "http.server."
 
     with tracer.start_as_current_span(f"{span_name_prefix}2") as span:
         print("done")
