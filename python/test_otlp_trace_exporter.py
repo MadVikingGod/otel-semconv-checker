@@ -1,6 +1,7 @@
 from opentelemetry import trace
 from logging import getLogger
 from time import sleep
+from requests import get
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
    OTLPSpanExporter
 )
@@ -15,14 +16,31 @@ from grpc import (
     RpcError,
     StatusCode,
 )
-from ipdb import set_trace
 from google.rpc.error_details_pb2 import RetryInfo
 from opentelemetry.exporter.otlp.proto.common._internal import (
     _create_exp_backoff_generator,
 )
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.context import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    attach,
+    detach,
+    set_value,
+)
+
 logger = getLogger(__name__)
 
 ExportResultT = TypeVar("ExportResultT")
+
+
+class SimpleTestSpanProcessor(SimpleSpanProcessor):
+
+    def on_end(self, span: ReadableSpan) -> None:
+        if not span.context.trace_flags.sampled:
+            return
+        token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
+        self.span_exporter.export((span,))
+        detach(token)
 
 
 class OTLPTestSpanExporter(OTLPSpanExporter):
@@ -66,7 +84,6 @@ class OTLPTestSpanExporter(OTLPSpanExporter):
 
                 except RpcError as error:
 
-                    set_trace()
                     if error.code() in [
                         StatusCode.CANCELLED,
                         StatusCode.DEADLINE_EXCEEDED,
@@ -102,6 +119,7 @@ class OTLPTestSpanExporter(OTLPSpanExporter):
                         sleep(delay)
                         continue
                     else:
+                        raise
                         logger.error(
                             "Failed to export %s to %s, error code: %s",
                             self._exporting,
@@ -123,7 +141,7 @@ resource = Resource(attributes={
 })
 
 provider = TracerProvider(resource=resource)
-processor = SimpleSpanProcessor(
+processor = SimpleTestSpanProcessor(
     OTLPTestSpanExporter(insecure=True, endpoint="0.0.0.0:4317")
 )
 provider.add_span_processor(processor)
@@ -132,13 +150,25 @@ trace.set_tracer_provider(provider)
 tracer = trace.get_tracer("tracer_name")
 
 
-def test_case():
+def test_requests():
 
-    span_name_prefix = "http.server."
+    RequestsInstrumentor().instrument()
 
-    with tracer.start_as_current_span(f"{span_name_prefix}0"):
-        with tracer.start_as_current_span(f"{span_name_prefix}1"):
-            with tracer.start_as_current_span(f"{span_name_prefix}2") as span:
-                print("done")
+    try:
+        get(
+            "http://localhost:8082/server_request",
+            params={"param": "hello"},
+            headers={"a": "b"},
+        )
+    except Exception:
+        pass
+
+
+def test_manual():
+
+    span_name_prefix = "hdfttp.server."
+
+    with tracer.start_as_current_span(f"{span_name_prefix}2") as span:
+        print("done")
 
     processor.on_end(span)

@@ -26,3 +26,5 @@ typing_extensions==4.8.0
 wrapt==1.15.0
 zipp==3.17.0
 ipdb
+opentelemetry-instrumentation-requests
+requests
