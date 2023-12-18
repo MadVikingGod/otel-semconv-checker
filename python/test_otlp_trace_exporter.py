@@ -27,6 +27,7 @@ from opentelemetry.context import (
     detach,
     set_value,
 )
+from docker import from_env
 
 logger = getLogger(__name__)
 
@@ -154,6 +155,24 @@ tracer = trace.get_tracer("tracer_namesdfdsf")
 
 
 def test_requests():
+
+    client = from_env()
+
+    client.containers.run(
+        "ghcr.io/madvikinggod/semantic-convention-checker:0.0.4",
+        # "ghcr.io/madvikinggod/otel-semconv-checker",
+        ports={"4318/tcp": 4318},
+        volumes=['/home/tigre/github/ocelotl/otel-semconv-checker/python/config.yaml:/config.yaml'],  # noqa
+        detach=True
+    )
+
+    from ipdb import set_trace
+    set_trace()
+
+    """
+Image: "ghcr.io/madvikinggod/semantic-convention-checker:0.0.4"
+xposed Port: 4318/tcp
+    """
 
     RequestsInstrumentor().instrument()
 
