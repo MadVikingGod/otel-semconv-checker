@@ -22,7 +22,7 @@ func newMatchDef(m Match, g map[string]semconv.Group) matchDef {
 	}
 	return matchDef{
 		name:   reg,
-		group:  semconv.GetAttributes(groups...),
+		group:  append(semconv.GetAttributes(groups...), m.Include...),
 		ignore: m.Ignore,
 	}
 }
