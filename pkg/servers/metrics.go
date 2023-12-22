@@ -9,6 +9,7 @@ import (
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	pbCollectorMetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
+	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	pbMetrics "go.opentelemetry.io/proto/otlp/metrics/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -90,12 +91,11 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 				found := false
 				log := log.With(slog.String("name", metric.Name))
 				for _, match := range s.matches {
-					if match.name.MatchString(metric.Name) {
-						found = true
-						missing, extra := checkMetric(log, match.group, match.ignore, metric)
-						logAttributes(log, missing, extra)
-						count += len(missing)
-						names = append(names, scope.Scope.Name)
+					missing, matched := checkMetric(log, match, metric, scope.GetSchemaUrl())
+					found = found || matched
+					count += missing
+					if missing > 0 {
+						names = append(names, scope.Scope.GetName())
 					}
 				}
 				if !found && s.reportUnmatched {
@@ -117,32 +117,56 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 	return &pbCollectorMetrics.ExportMetricsServiceResponse{}, nil
 }
 
-func checkMetric(log *slog.Logger, ag, ignore []string, m *pbMetrics.Metric) (missing []string, extra []string) {
-	if m == nil {
-		return nil, nil
+func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric, schemaUrl string) (int, bool) {
+	name := metric.GetName()
+	if !match.name.MatchString(name) {
+		return 0, false
 	}
+	log = log.With(slog.String("name", name))
 
-	switch d := m.Data.(type) {
+	switch d := metric.Data.(type) {
 	case *pbMetrics.Metric_Gauge:
-		missing, extra = checkNumberDataPoints(ag, ignore, d.Gauge.DataPoints)
+		return checkDataPoints(log, match, d.Gauge, schemaUrl)
 	case *pbMetrics.Metric_Sum:
-		missing, extra = checkNumberDataPoints(ag, ignore, d.Sum.DataPoints)
-
-		// TODO other types
+		return checkDataPoints(log, match, d.Sum, schemaUrl)
+	case *pbMetrics.Metric_Histogram:
+		return checkDataPoints(log, match, d.Histogram, schemaUrl)
+	case *pbMetrics.Metric_Summary:
+		return checkDataPoints(log, match, d.Summary, schemaUrl)
+	case *pbMetrics.Metric_ExponentialHistogram:
+		return checkDataPoints(log, match, d.ExponentialHistogram, schemaUrl)
 	default:
-		log.Warn("Unsupported metric type: %+v", m.Data)
+		log.Warn("Unsupported metric type: %t", metric.Data)
 	}
-
-	return missing, extra
+	return 0, false
 }
 
-func checkNumberDataPoints(ag, ignore []string, ps []*pbMetrics.NumberDataPoint) (missing []string, extra []string) {
-	for _, p := range ps {
-		m, e := semconv.Compare(ag, p.Attributes)
-		missing = append(missing, m...)
-		extra = append(extra, e...)
-
+func checkDataPoints[T attributeGetter, D dataPointGetter[T]](log *slog.Logger, match matchDef, metric D, schemaUrl string) (int, bool) {
+	found := false
+	count := 0
+	for _, p := range metric.GetDataPoints() {
+		missing, matched := match.match(log, p.GetAttributes(), schemaUrl)
+		found = found || matched
+		count += missing
 	}
-	missing, extra = filter(missing, ignore), filter(extra, ignore)
-	return missing, extra
+	return count, found
 }
+
+type attributeGetter interface {
+	GetAttributes() []*v1.KeyValue
+}
+
+var _ attributeGetter = &pbMetrics.NumberDataPoint{}
+var _ attributeGetter = &pbMetrics.HistogramDataPoint{}
+var _ attributeGetter = &pbMetrics.SummaryDataPoint{}
+var _ attributeGetter = &pbMetrics.ExponentialHistogramDataPoint{}
+
+type dataPointGetter[T attributeGetter] interface {
+	GetDataPoints() []T
+}
+
+var _ dataPointGetter[*pbMetrics.NumberDataPoint] = &pbMetrics.Gauge{}
+var _ dataPointGetter[*pbMetrics.NumberDataPoint] = &pbMetrics.Sum{}
+var _ dataPointGetter[*pbMetrics.HistogramDataPoint] = &pbMetrics.Histogram{}
+var _ dataPointGetter[*pbMetrics.SummaryDataPoint] = &pbMetrics.Summary{}
+var _ dataPointGetter[*pbMetrics.ExponentialHistogramDataPoint] = &pbMetrics.ExponentialHistogram{}
