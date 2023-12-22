@@ -9,7 +9,6 @@ import (
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	pbCollectorTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	pbTrace "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -74,28 +73,24 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 
 		for _, scope := range r.ScopeSpans {
 			log := log.With(slog.String("section", "span"))
-			if scope.SchemaUrl != s.resourceVersion {
-				log.Info("incorrect scope version",
-					slog.String("schemaUrl", scope.SchemaUrl),
-					slog.String("expected", s.resourceVersion),
-					slog.Any("scope", scope.Scope),
-				)
-				// count++
-			}
 			if scope.Scope != nil {
 				log = log.With(slog.String("scope.name", scope.Scope.Name))
 			}
-			fmt.Println(len(scope.Spans))
+
 			for _, span := range scope.Spans {
 				found := false
-				log := log.With(slog.String("name", span.Name))
+				name := span.GetName()
+				log := log.With(slog.String("name", name))
 				for _, match := range s.matches {
-					if match.name.MatchString(span.Name) {
-						found = true
-						missing, extra := checkSpan(match.group, match.ignore, span)
-						logAttributes(log, missing, extra)
-						count += len(missing)
-						names = append(names, scope.Scope.Name)
+					if !match.name.MatchString(name) {
+						continue
+					}
+
+					missing, matched := match.match(log, span.GetAttributes(), scope.GetSchemaUrl())
+					found = found || matched
+					count += missing
+					if missing > 0 {
+						names = append(names, scope.Scope.GetName())
 					}
 				}
 				if !found && s.reportUnmatched {
@@ -115,27 +110,4 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 	}
 
 	return &pbCollectorTrace.ExportTraceServiceResponse{}, nil
-}
-
-func filter(input, removed []string) []string {
-	output := []string{}
-OUTER:
-	for _, in := range input {
-		for _, rem := range removed {
-			if in == rem {
-				continue OUTER
-			}
-		}
-		output = append(output, in)
-	}
-	return output
-}
-
-func checkSpan(ag, ignore []string, s *pbTrace.Span) (missing []string, extra []string) {
-	if s != nil {
-		missing, extra := semconv.Compare(ag, s.Attributes)
-		missing, extra = filter(missing, ignore), filter(extra, ignore)
-		return missing, extra
-	}
-	return nil, nil
 }
