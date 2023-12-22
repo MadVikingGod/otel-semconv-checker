@@ -3,6 +3,7 @@
 package servers
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -51,7 +52,7 @@ func TestTraceServerExport(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := newRequest(tc.attrs)
-			_, err := ts.Export(nil, req)
+			_, err := ts.Export(context.Background(), req)
 			if tc.hasError {
 				if err == nil {
 					t.Fatal("expected error, got nil")
