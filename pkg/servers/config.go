@@ -16,6 +16,7 @@ type Match struct {
 	Match            string
 	Groups           []string
 	Ignore           []string
+	Include          []string
 	ReportAdditional bool `mapstructure:"report_additional"`
 }
 
