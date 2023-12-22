@@ -39,6 +39,10 @@ func (m matchDef) match(log *slog.Logger, attrs []*v1.KeyValue, schemaUrl string
 	missing, extra := semconv.Compare(m.group, attrs)
 	missing, extra = filter(missing, m.ignore), filter(extra, m.ignore)
 
+	if m.semVer != nil && *m.semVer != schemaUrl {
+		log = log.With(slog.String("schema", schemaUrl))
+	}
+
 	logAttributes(log, missing, extra)
 	return len(missing), true
 }

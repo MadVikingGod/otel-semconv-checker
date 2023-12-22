@@ -75,14 +75,6 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 
 		for _, scope := range r.ScopeMetrics {
 			log := log.With(slog.String("section", "metric"))
-			if scope.SchemaUrl != s.resourceVersion {
-				log.Info("incorrect scope version",
-					slog.String("schemaUrl", scope.SchemaUrl),
-					slog.String("expected", s.resourceVersion),
-					slog.Any("scope", scope.Scope),
-				)
-				// count++
-			}
 			if scope.Scope != nil {
 				log = log.With(slog.String("scope.name", scope.Scope.Name))
 			}
