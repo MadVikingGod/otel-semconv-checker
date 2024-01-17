@@ -24,7 +24,8 @@ type TraceServer struct {
 }
 
 func NewTraceService(cfg Config, svs map[string]semconv.SemanticVersion) *TraceServer {
-	if cfg.Resource.SemanticVersion == "" {
+	_, found := svs[cfg.Resource.SemanticVersion]
+	if cfg.Resource.SemanticVersion == "" || !found {
 		cfg.Resource.SemanticVersion = semconv.DefaultVersion
 	}
 
@@ -37,12 +38,13 @@ func NewTraceService(cfg Config, svs map[string]semconv.SemanticVersion) *TraceS
 		groups, ok := svs[match.SemanticVersion]
 		if !ok {
 			match.SemanticVersion = semconv.DefaultVersion
+			groups = svs[match.SemanticVersion]
 		}
 		matches = append(matches, newMatchDef(match, groups.Groups))
 	}
 
 	return &TraceServer{
-		resourceVersion: semconv.DefaultVersion,
+		resourceVersion: cfg.Resource.SemanticVersion,
 		resourceGroups:  semconv.GetAttributes(resourceGroups...),
 		resourceIgnore:  cfg.Resource.Ignore,
 		matches:         matches,
@@ -76,17 +78,20 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 			if scope.Scope != nil {
 				log = log.With(slog.String("scope.name", scope.Scope.Name))
 			}
+			if url := scope.GetSchemaUrl(); url != "" {
+				log = log.With(slog.String("schema", url))
+			}
 
 			for _, span := range scope.Spans {
 				found := false
 				name := span.GetName()
 				log := log.With(slog.String("name", name))
 				for _, match := range s.matches {
-					if !match.name.MatchString(name) {
+					if !match.isMatch(name, span.GetAttributes()) {
 						continue
 					}
 
-					missing, matched := match.match(log, span.GetAttributes(), scope.GetSchemaUrl())
+					missing, matched := match.matchAttributes(log, span.GetAttributes())
 					found = found || matched
 					count += missing
 					if missing > 0 {

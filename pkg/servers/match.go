@@ -12,6 +12,7 @@ import (
 
 type matchDef struct {
 	name   *regexp.Regexp
+	attrs  map[string]string
 	semVer *string
 	group  []string
 	ignore []string
@@ -22,7 +23,10 @@ func newMatchDef(m Match, g map[string]semconv.Group) matchDef {
 	if m.SemanticVersion != "" {
 		*semver = m.SemanticVersion
 	}
-	reg := regexp.MustCompile(m.Match)
+	var reg *regexp.Regexp
+	if m.Match != "" {
+		reg = regexp.MustCompile(m.Match)
+	}
 	groups := []semconv.Group{}
 	for _, group := range m.Groups {
 		groups = append(groups, g[group])
@@ -30,18 +34,45 @@ func newMatchDef(m Match, g map[string]semconv.Group) matchDef {
 	return matchDef{
 		name:   reg,
 		semVer: semver,
+		attrs:  m.MatchAttributes,
 		group:  append(semconv.GetAttributes(groups...), m.Include...),
 		ignore: m.Ignore,
 	}
 }
 
-func (m matchDef) match(log *slog.Logger, attrs []*v1.KeyValue, schemaUrl string) (int, bool) {
+func (m matchDef) isMatch(name string, attrs []*v1.KeyValue) bool {
+	return m.isNameMatch(name) && m.isAttrMatch(attrs)
+}
+
+func (m matchDef) isNameMatch(name string) bool {
+	if m.name != nil {
+		return m.name.MatchString(name)
+	}
+	return true
+}
+
+func (m matchDef) isAttrMatch(attrs []*v1.KeyValue) bool {
+	if len(m.attrs) == 0 {
+		return true
+	}
+	for key, val := range m.attrs {
+		found := false
+		for _, attr := range attrs {
+			if attr.Key == key && (val == "" || attr.Value.GetStringValue() == val) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func (m matchDef) matchAttributes(log *slog.Logger, attrs []*v1.KeyValue) (int, bool) {
 	missing, extra := semconv.Compare(m.group, attrs)
 	missing, extra = filter(missing, m.ignore), filter(extra, m.ignore)
-
-	if m.semVer != nil && *m.semVer != schemaUrl {
-		log = log.With(slog.String("schema", schemaUrl))
-	}
 
 	logAttributes(log, missing, extra)
 	return len(missing), true

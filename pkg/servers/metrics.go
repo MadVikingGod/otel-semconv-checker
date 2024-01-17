@@ -82,8 +82,12 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 			for _, metric := range scope.Metrics {
 				found := false
 				log := log.With(slog.String("name", metric.Name))
+				if url := scope.GetSchemaUrl(); url != "" {
+					log = log.With(slog.String("schema", url))
+				}
+
 				for _, match := range s.matches {
-					missing, matched := checkMetric(log, match, metric, scope.GetSchemaUrl())
+					missing, matched := checkMetric(log, match, metric)
 					found = found || matched
 					count += missing
 					if missing > 0 {
@@ -109,35 +113,38 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 	return &pbCollectorMetrics.ExportMetricsServiceResponse{}, nil
 }
 
-func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric, schemaUrl string) (int, bool) {
+func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric) (int, bool) {
 	name := metric.GetName()
-	if !match.name.MatchString(name) {
+	if !match.isNameMatch(name) {
 		return 0, false
 	}
 	log = log.With(slog.String("name", name))
 
 	switch d := metric.Data.(type) {
 	case *pbMetrics.Metric_Gauge:
-		return checkDataPoints(log, match, d.Gauge, schemaUrl)
+		return checkDataPoints(log, match, d.Gauge)
 	case *pbMetrics.Metric_Sum:
-		return checkDataPoints(log, match, d.Sum, schemaUrl)
+		return checkDataPoints(log, match, d.Sum)
 	case *pbMetrics.Metric_Histogram:
-		return checkDataPoints(log, match, d.Histogram, schemaUrl)
+		return checkDataPoints(log, match, d.Histogram)
 	case *pbMetrics.Metric_Summary:
-		return checkDataPoints(log, match, d.Summary, schemaUrl)
+		return checkDataPoints(log, match, d.Summary)
 	case *pbMetrics.Metric_ExponentialHistogram:
-		return checkDataPoints(log, match, d.ExponentialHistogram, schemaUrl)
+		return checkDataPoints(log, match, d.ExponentialHistogram)
 	default:
 		log.Warn("Unsupported metric type: %t", metric.Data)
 	}
 	return 0, false
 }
 
-func checkDataPoints[T attributeGetter, D dataPointGetter[T]](log *slog.Logger, match matchDef, metric D, schemaUrl string) (int, bool) {
+func checkDataPoints[T attributeGetter, D dataPointGetter[T]](log *slog.Logger, match matchDef, metric D) (int, bool) {
 	found := false
 	count := 0
 	for _, p := range metric.GetDataPoints() {
-		missing, matched := match.match(log, p.GetAttributes(), schemaUrl)
+		if !match.isAttrMatch(p.GetAttributes()) {
+			continue
+		}
+		missing, matched := match.matchAttributes(log, p.GetAttributes())
 		found = found || matched
 		count += missing
 	}
