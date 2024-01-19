@@ -80,7 +80,6 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 			if scope.Scope != nil {
 				log = log.With(slog.String("scope.name", scope.Scope.Name))
 			}
-			fmt.Println(len(scope.Metrics))
 			for _, metric := range scope.Metrics {
 				found := false
 				log := log.With(slog.String("name", metric.Name))
