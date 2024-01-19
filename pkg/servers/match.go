@@ -16,6 +16,8 @@ type matchDef struct {
 	semVer *string
 	group  []string
 	ignore []string
+
+	reportAdditional bool
 }
 
 func newMatchDef(m Match, g map[string]semconv.Group) matchDef {
@@ -32,11 +34,12 @@ func newMatchDef(m Match, g map[string]semconv.Group) matchDef {
 		groups = append(groups, g[group])
 	}
 	return matchDef{
-		name:   reg,
-		semVer: semver,
-		attrs:  m.MatchAttributes,
-		group:  append(semconv.GetAttributes(groups...), m.Include...),
-		ignore: m.Ignore,
+		name:             reg,
+		semVer:           semver,
+		attrs:            m.MatchAttributes,
+		group:            append(semconv.GetAttributes(groups...), m.Include...),
+		ignore:           m.Ignore,
+		reportAdditional: m.ReportAdditional,
 	}
 }
 
@@ -70,12 +73,26 @@ func (m matchDef) isAttrMatch(attrs []*v1.KeyValue) bool {
 	return true
 }
 
-func (m matchDef) matchAttributes(log *slog.Logger, attrs []*v1.KeyValue) (int, bool) {
+func (m matchDef) matchAttributes(log *slog.Logger, attrs []*v1.KeyValue) int {
 	missing, extra := semconv.Compare(m.group, attrs)
 	missing, extra = filter(missing, m.ignore), filter(extra, m.ignore)
 
-	logAttributes(log, missing, extra)
-	return len(missing), true
+	m.logAttributes(log, missing, extra)
+
+	return len(missing)
+}
+
+func (m matchDef) logAttributes(log *slog.Logger, missing, extra []string) {
+	if len(missing) > 0 {
+		log.Info("missing attributes",
+			slog.Any("attributes", missing),
+		)
+	}
+	if len(extra) > 0 && m.reportAdditional {
+		log.Info("extra attributes",
+			slog.Any("attributes", extra),
+		)
+	}
 }
 
 func filter(input, removed []string) []string {

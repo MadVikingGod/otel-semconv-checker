@@ -18,22 +18,23 @@ import (
 type MetricsServer struct {
 	pbCollectorMetrics.UnimplementedMetricsServiceServer
 
-	resourceVersion string
-	resourceGroups  []string
-	resourceIgnore  []string
+	resource        matchDef
 	matches         []matchDef
 	reportUnmatched bool
 }
 
 func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *MetricsServer {
-	if cfg.Resource.SemanticVersion == "" {
+	_, found := svs[cfg.Resource.SemanticVersion]
+	if cfg.Resource.SemanticVersion != "" && !found {
 		cfg.Resource.SemanticVersion = semconv.DefaultVersion
 	}
 
-	resourceGroups := []semconv.Group{}
-	for _, group := range cfg.Resource.Groups {
-		resourceGroups = append(resourceGroups, svs[cfg.Resource.SemanticVersion].Groups[group])
+	resSemVer := cfg.Resource.SemanticVersion
+	if !found {
+		resSemVer = semconv.DefaultVersion
 	}
+	resource := newMatchDef(cfg.Resource, svs[resSemVer].Groups)
+
 	matches := []matchDef{}
 	for _, match := range cfg.Metrics {
 		groups, ok := svs[match.SemanticVersion]
@@ -44,9 +45,7 @@ func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *Metr
 	}
 
 	return &MetricsServer{
-		resourceVersion: semconv.DefaultVersion,
-		resourceGroups:  semconv.GetAttributes(resourceGroups...),
-		resourceIgnore:  cfg.Resource.Ignore,
+		resource:        resource,
 		matches:         matches,
 		reportUnmatched: cfg.ReportUnmatched,
 	}
@@ -60,18 +59,21 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 	count := 0
 	names := []string{}
 	for _, r := range req.ResourceMetrics {
-		if r.SchemaUrl != s.resourceVersion {
+		if s.resource.semVer != nil && *s.resource.semVer != "" && r.SchemaUrl != *s.resource.semVer {
 			log.Info("incorrect resource version",
 				slog.String("section", "resource"),
 				slog.String("version", r.SchemaUrl),
-				slog.String("expected", s.resourceVersion),
+				slog.String("expected", *s.resource.semVer),
 			)
 		}
-		missing, extra := checkResource(s.resourceGroups, s.resourceIgnore, r.Resource)
-		logAttributes(log.With(
-			slog.String("section", "resource"),
-			slog.String("version", r.SchemaUrl),
-		), missing, extra)
+		if r.Resource != nil {
+			log := log.With(
+				slog.String("section", "resource"),
+				slog.String("version", r.SchemaUrl),
+			)
+
+			s.resource.matchAttributes(log, r.Resource.Attributes)
+		}
 
 		for _, scope := range r.ScopeMetrics {
 			log := log.With(slog.String("section", "metric"))
@@ -91,7 +93,7 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 					found = found || matched
 					count += missing
 					if missing > 0 {
-						names = append(names, scope.Scope.GetName())
+						names = append(names, fmt.Sprintf("%s/%s", scope.Scope.GetName(), metric.GetName()))
 					}
 				}
 				if !found && s.reportUnmatched {
@@ -144,8 +146,8 @@ func checkDataPoints[T attributeGetter, D dataPointGetter[T]](log *slog.Logger, 
 		if !match.isAttrMatch(p.GetAttributes()) {
 			continue
 		}
-		missing, matched := match.matchAttributes(log, p.GetAttributes())
-		found = found || matched
+		missing := match.matchAttributes(log, p.GetAttributes())
+		found = true
 		count += missing
 	}
 	return count, found

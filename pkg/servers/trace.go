@@ -16,23 +16,23 @@ import (
 type TraceServer struct {
 	pbCollectorTrace.UnimplementedTraceServiceServer
 
-	resourceVersion string
-	resourceGroups  []string
-	resourceIgnore  []string
+	resource        matchDef
 	matches         []matchDef
 	reportUnmatched bool
 }
 
 func NewTraceService(cfg Config, svs map[string]semconv.SemanticVersion) *TraceServer {
 	_, found := svs[cfg.Resource.SemanticVersion]
-	if cfg.Resource.SemanticVersion == "" || !found {
+	if cfg.Resource.SemanticVersion != "" && !found {
 		cfg.Resource.SemanticVersion = semconv.DefaultVersion
 	}
 
-	resourceGroups := []semconv.Group{}
-	for _, group := range cfg.Resource.Groups {
-		resourceGroups = append(resourceGroups, svs[cfg.Resource.SemanticVersion].Groups[group])
+	resSemVer := cfg.Resource.SemanticVersion
+	if !found {
+		resSemVer = semconv.DefaultVersion
 	}
+	resource := newMatchDef(cfg.Resource, svs[resSemVer].Groups)
+
 	matches := []matchDef{}
 	for _, match := range cfg.Trace {
 		groups, ok := svs[match.SemanticVersion]
@@ -44,9 +44,7 @@ func NewTraceService(cfg Config, svs map[string]semconv.SemanticVersion) *TraceS
 	}
 
 	return &TraceServer{
-		resourceVersion: cfg.Resource.SemanticVersion,
-		resourceGroups:  semconv.GetAttributes(resourceGroups...),
-		resourceIgnore:  cfg.Resource.Ignore,
+		resource:        resource,
 		matches:         matches,
 		reportUnmatched: cfg.ReportUnmatched,
 	}
@@ -60,18 +58,21 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 	count := 0
 	names := []string{}
 	for _, r := range req.ResourceSpans {
-		if r.SchemaUrl != s.resourceVersion {
+		if s.resource.semVer != nil && *s.resource.semVer != "" && r.SchemaUrl != *s.resource.semVer {
 			log.Info("incorrect resource version",
 				slog.String("section", "resource"),
 				slog.String("version", r.SchemaUrl),
-				slog.String("expected", s.resourceVersion),
+				slog.String("expected", *s.resource.semVer),
 			)
 		}
-		missing, extra := checkResource(s.resourceGroups, s.resourceIgnore, r.Resource)
-		logAttributes(log.With(
-			slog.String("section", "resource"),
-			slog.String("version", r.SchemaUrl),
-		), missing, extra)
+		if r.Resource != nil {
+			log := log.With(
+				slog.String("section", "resource"),
+				slog.String("version", r.SchemaUrl),
+			)
+
+			s.resource.matchAttributes(log, r.Resource.Attributes)
+		}
 
 		for _, scope := range r.ScopeSpans {
 			log := log.With(slog.String("section", "span"))
@@ -91,11 +92,11 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 						continue
 					}
 
-					missing, matched := match.matchAttributes(log, span.GetAttributes())
-					found = found || matched
+					missing := match.matchAttributes(log, span.GetAttributes())
+					found = true
 					count += missing
 					if missing > 0 {
-						names = append(names, scope.Scope.GetName())
+						names = append(names, fmt.Sprintf("%s/%s", scope.Scope.GetName(), span.Name))
 					}
 				}
 				if !found && s.reportUnmatched {
