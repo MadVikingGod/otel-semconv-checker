@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"strings"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
@@ -17,6 +18,7 @@ import (
 	pbMetric "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	pbTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
 )
 
 var config = flag.String("cfg", "config.yaml", "The config file to use.")
@@ -53,6 +55,11 @@ func main() {
 	pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, svs))
 	pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, svs))
 	pbLog.RegisterLogsServiceServer(grpcServer, &logServer{g: nil})
+
+	//Liveness probe
+	go func() {
+		_ = http.ListenAndServe(":8086", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	}()
 
 	slog.Info("starting server", "address", cfg.ServerAddress)
 	if err := grpcServer.Serve(lis); err != nil {
