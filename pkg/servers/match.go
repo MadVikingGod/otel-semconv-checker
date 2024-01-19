@@ -12,9 +12,12 @@ import (
 
 type matchDef struct {
 	name   *regexp.Regexp
+	attrs  map[string]string
 	semVer *string
 	group  []string
 	ignore []string
+
+	reportAdditional bool
 }
 
 func newMatchDef(m Match, g map[string]semconv.Group) matchDef {
@@ -22,29 +25,74 @@ func newMatchDef(m Match, g map[string]semconv.Group) matchDef {
 	if m.SemanticVersion != "" {
 		*semver = m.SemanticVersion
 	}
-	reg := regexp.MustCompile(m.Match)
+	var reg *regexp.Regexp
+	if m.Match != "" {
+		reg = regexp.MustCompile(m.Match)
+	}
 	groups := []semconv.Group{}
 	for _, group := range m.Groups {
 		groups = append(groups, g[group])
 	}
 	return matchDef{
-		name:   reg,
-		semVer: semver,
-		group:  append(semconv.GetAttributes(groups...), m.Include...),
-		ignore: m.Ignore,
+		name:             reg,
+		semVer:           semver,
+		attrs:            m.MatchAttributes,
+		group:            append(semconv.GetAttributes(groups...), m.Include...),
+		ignore:           m.Ignore,
+		reportAdditional: m.ReportAdditional,
 	}
 }
 
-func (m matchDef) match(log *slog.Logger, attrs []*v1.KeyValue, schemaUrl string) (int, bool) {
+func (m matchDef) isMatch(name string, attrs []*v1.KeyValue) bool {
+	return m.isNameMatch(name) && m.isAttrMatch(attrs)
+}
+
+func (m matchDef) isNameMatch(name string) bool {
+	if m.name != nil {
+		return m.name.MatchString(name)
+	}
+	return true
+}
+
+func (m matchDef) isAttrMatch(attrs []*v1.KeyValue) bool {
+	if len(m.attrs) == 0 {
+		return true
+	}
+	for key, val := range m.attrs {
+		found := false
+		for _, attr := range attrs {
+			if attr.Key == key && (val == "" || attr.Value.GetStringValue() == val) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func (m matchDef) matchAttributes(log *slog.Logger, attrs []*v1.KeyValue) int {
 	missing, extra := semconv.Compare(m.group, attrs)
 	missing, extra = filter(missing, m.ignore), filter(extra, m.ignore)
 
-	if m.semVer != nil && *m.semVer != schemaUrl {
-		log = log.With(slog.String("schema", schemaUrl))
-	}
+	m.logAttributes(log, missing, extra)
 
-	logAttributes(log, missing, extra)
-	return len(missing), true
+	return len(missing)
+}
+
+func (m matchDef) logAttributes(log *slog.Logger, missing, extra []string) {
+	if len(missing) > 0 {
+		log.Info("missing attributes",
+			slog.Any("attributes", missing),
+		)
+	}
+	if len(extra) > 0 && m.reportAdditional {
+		log.Info("extra attributes",
+			slog.Any("attributes", extra),
+		)
+	}
 }
 
 func filter(input, removed []string) []string {

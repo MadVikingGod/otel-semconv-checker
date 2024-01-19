@@ -18,22 +18,23 @@ import (
 type MetricsServer struct {
 	pbCollectorMetrics.UnimplementedMetricsServiceServer
 
-	resourceVersion string
-	resourceGroups  []string
-	resourceIgnore  []string
+	resource        matchDef
 	matches         []matchDef
 	reportUnmatched bool
 }
 
 func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *MetricsServer {
-	if cfg.Resource.SemanticVersion == "" {
+	_, found := svs[cfg.Resource.SemanticVersion]
+	if cfg.Resource.SemanticVersion != "" && !found {
 		cfg.Resource.SemanticVersion = semconv.DefaultVersion
 	}
 
-	resourceGroups := []semconv.Group{}
-	for _, group := range cfg.Resource.Groups {
-		resourceGroups = append(resourceGroups, svs[cfg.Resource.SemanticVersion].Groups[group])
+	resSemVer := cfg.Resource.SemanticVersion
+	if !found {
+		resSemVer = semconv.DefaultVersion
 	}
+	resource := newMatchDef(cfg.Resource, svs[resSemVer].Groups)
+
 	matches := []matchDef{}
 	for _, match := range cfg.Metrics {
 		groups, ok := svs[match.SemanticVersion]
@@ -44,9 +45,7 @@ func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *Metr
 	}
 
 	return &MetricsServer{
-		resourceVersion: semconv.DefaultVersion,
-		resourceGroups:  semconv.GetAttributes(resourceGroups...),
-		resourceIgnore:  cfg.Resource.Ignore,
+		resource:        resource,
 		matches:         matches,
 		reportUnmatched: cfg.ReportUnmatched,
 	}
@@ -60,18 +59,21 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 	count := 0
 	names := []string{}
 	for _, r := range req.ResourceMetrics {
-		if r.SchemaUrl != s.resourceVersion {
+		if s.resource.semVer != nil && *s.resource.semVer != "" && r.SchemaUrl != *s.resource.semVer {
 			log.Info("incorrect resource version",
 				slog.String("section", "resource"),
 				slog.String("version", r.SchemaUrl),
-				slog.String("expected", s.resourceVersion),
+				slog.String("expected", *s.resource.semVer),
 			)
 		}
-		missing, extra := checkResource(s.resourceGroups, s.resourceIgnore, r.Resource)
-		logAttributes(log.With(
-			slog.String("section", "resource"),
-			slog.String("version", r.SchemaUrl),
-		), missing, extra)
+		if r.Resource != nil {
+			log := log.With(
+				slog.String("section", "resource"),
+				slog.String("version", r.SchemaUrl),
+			)
+
+			s.resource.matchAttributes(log, r.Resource.Attributes)
+		}
 
 		for _, scope := range r.ScopeMetrics {
 			log := log.With(slog.String("section", "metric"))
@@ -82,12 +84,16 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 			for _, metric := range scope.Metrics {
 				found := false
 				log := log.With(slog.String("name", metric.Name))
+				if url := scope.GetSchemaUrl(); url != "" {
+					log = log.With(slog.String("schema", url))
+				}
+
 				for _, match := range s.matches {
-					missing, matched := checkMetric(log, match, metric, scope.GetSchemaUrl())
+					missing, matched := checkMetric(log, match, metric)
 					found = found || matched
 					count += missing
 					if missing > 0 {
-						names = append(names, scope.Scope.GetName())
+						names = append(names, fmt.Sprintf("%s/%s", scope.Scope.GetName(), metric.GetName()))
 					}
 				}
 				if !found && s.reportUnmatched {
@@ -109,36 +115,39 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 	return &pbCollectorMetrics.ExportMetricsServiceResponse{}, nil
 }
 
-func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric, schemaUrl string) (int, bool) {
+func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric) (int, bool) {
 	name := metric.GetName()
-	if !match.name.MatchString(name) {
+	if !match.isNameMatch(name) {
 		return 0, false
 	}
 	log = log.With(slog.String("name", name))
 
 	switch d := metric.Data.(type) {
 	case *pbMetrics.Metric_Gauge:
-		return checkDataPoints(log, match, d.Gauge, schemaUrl)
+		return checkDataPoints(log, match, d.Gauge)
 	case *pbMetrics.Metric_Sum:
-		return checkDataPoints(log, match, d.Sum, schemaUrl)
+		return checkDataPoints(log, match, d.Sum)
 	case *pbMetrics.Metric_Histogram:
-		return checkDataPoints(log, match, d.Histogram, schemaUrl)
+		return checkDataPoints(log, match, d.Histogram)
 	case *pbMetrics.Metric_Summary:
-		return checkDataPoints(log, match, d.Summary, schemaUrl)
+		return checkDataPoints(log, match, d.Summary)
 	case *pbMetrics.Metric_ExponentialHistogram:
-		return checkDataPoints(log, match, d.ExponentialHistogram, schemaUrl)
+		return checkDataPoints(log, match, d.ExponentialHistogram)
 	default:
 		log.Warn("Unsupported metric type: %t", metric.Data)
 	}
 	return 0, false
 }
 
-func checkDataPoints[T attributeGetter, D dataPointGetter[T]](log *slog.Logger, match matchDef, metric D, schemaUrl string) (int, bool) {
+func checkDataPoints[T attributeGetter, D dataPointGetter[T]](log *slog.Logger, match matchDef, metric D) (int, bool) {
 	found := false
 	count := 0
 	for _, p := range metric.GetDataPoints() {
-		missing, matched := match.match(log, p.GetAttributes(), schemaUrl)
-		found = found || matched
+		if !match.isAttrMatch(p.GetAttributes()) {
+			continue
+		}
+		missing := match.matchAttributes(log, p.GetAttributes())
+		found = true
 		count += missing
 	}
 	return count, found
