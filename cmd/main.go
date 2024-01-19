@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"net/http"
 	"strings"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
@@ -55,11 +54,6 @@ func main() {
 	pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, svs))
 	pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, svs))
 	pbLog.RegisterLogsServiceServer(grpcServer, &logServer{g: nil})
-
-	//Liveness probe
-	go func() {
-		_ = http.ListenAndServe(":8086", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
-	}()
 
 	slog.Info("starting server", "address", cfg.ServerAddress)
 	if err := grpcServer.Serve(lis); err != nil {
