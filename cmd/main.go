@@ -17,6 +17,7 @@ import (
 	pbMetric "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	pbTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
 )
 
 var config = flag.String("cfg", "config.yaml", "The config file to use.")
