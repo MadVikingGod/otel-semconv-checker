@@ -71,7 +71,7 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 				slog.String("version", r.SchemaUrl),
 			)
 
-			s.resource.matchAttributes(log, r.Resource.Attributes)
+			s.resource.compareAttributes(log, r.Resource.Attributes)
 		}
 
 		for _, scope := range r.ScopeSpans {
@@ -92,7 +92,7 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 						continue
 					}
 
-					missing := match.matchAttributes(log, span.GetAttributes())
+					missing := match.compareAttributes(log, span.GetAttributes())
 					found = true
 					count += missing
 					if missing > 0 {
