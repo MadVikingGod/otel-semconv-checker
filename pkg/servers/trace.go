@@ -92,7 +92,7 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 						continue
 					}
 
-					missing := match.compareAttributes(log, span.GetAttributes())
+					missing := match.compareAttributes(log, span.GetAttributes(), scope.GetScope().GetAttributes(), r.GetResource().GetAttributes())
 					found = true
 					count += missing
 					if missing > 0 {

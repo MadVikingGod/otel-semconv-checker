@@ -4,10 +4,12 @@ package semconv
 
 import pbCommon "go.opentelemetry.io/proto/otlp/common/v1"
 
-func Compare(attrSlice []string, attributes []*pbCommon.KeyValue) (missing []string, extra []string) {
+func Compare(attrSlice []string, attributes ...[]*pbCommon.KeyValue) (missing []string, extra []string) {
 	attrs := map[string]bool{}
-	for _, a := range attributes {
-		attrs[a.Key] = false
+	for _, aList := range attributes {
+		for _, a := range aList {
+			attrs[a.Key] = false
+		}
 	}
 	for _, a := range attrSlice {
 		if _, ok := attrs[a]; !ok {
