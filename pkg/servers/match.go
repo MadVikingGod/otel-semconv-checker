@@ -73,8 +73,11 @@ func (m matchDef) isAttrMatch(attrs []*v1.KeyValue) bool {
 	return true
 }
 
-func (m matchDef) matchAttributes(log *slog.Logger, attrs []*v1.KeyValue) int {
+func (m matchDef) compareAttributes(log *slog.Logger, attrs []*v1.KeyValue) int {
 	missing, extra := semconv.Compare(m.group, attrs)
+	if !m.reportAdditional {
+		extra = []string{}
+	}
 	missing, extra = filter(missing, m.ignore), filter(extra, m.ignore)
 
 	m.logAttributes(log, missing, extra)

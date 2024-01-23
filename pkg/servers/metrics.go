@@ -11,6 +11,7 @@ import (
 	pbCollectorMetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	pbMetrics "go.opentelemetry.io/proto/otlp/metrics/v1"
+	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -72,7 +73,7 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 				slog.String("version", r.SchemaUrl),
 			)
 
-			s.resource.matchAttributes(log, r.Resource.Attributes)
+			s.resource.compareAttributes(log, r.Resource.Attributes)
 		}
 
 		for _, scope := range r.ScopeMetrics {
@@ -88,7 +89,7 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 				}
 
 				for _, match := range s.matches {
-					missing, matched := checkMetric(log, match, metric)
+					missing, matched := checkMetric(log, match, metric, r.Resource)
 					found = found || matched
 					count += missing
 					if missing > 0 {
@@ -114,12 +115,11 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 	return &pbCollectorMetrics.ExportMetricsServiceResponse{}, nil
 }
 
-func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric) (int, bool) {
+func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric, res *resourcev1.Resource) (int, bool) {
 	name := metric.GetName()
 	if !match.isNameMatch(name) {
 		return 0, false
 	}
-	log = log.With(slog.String("name", name))
 
 	switch d := metric.Data.(type) {
 	case *pbMetrics.Metric_Gauge:
@@ -145,7 +145,7 @@ func checkDataPoints[T attributeGetter, D dataPointGetter[T]](log *slog.Logger, 
 		if !match.isAttrMatch(p.GetAttributes()) {
 			continue
 		}
-		missing := match.matchAttributes(log, p.GetAttributes())
+		missing := match.compareAttributes(log, p.GetAttributes())
 		found = true
 		count += missing
 	}
