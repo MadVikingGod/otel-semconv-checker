@@ -11,7 +11,6 @@ import (
 	pbCollectorMetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	pbMetrics "go.opentelemetry.io/proto/otlp/metrics/v1"
-	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -78,8 +77,8 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 
 		for _, scope := range r.ScopeMetrics {
 			log := log.With(slog.String("section", "metric"))
-			if scope.Scope != nil {
-				log = log.With(slog.String("scope.name", scope.Scope.Name))
+			if name := scope.GetScope().GetName(); name != "" {
+				log = log.With(slog.String("scope.name", name))
 			}
 			for _, metric := range scope.Metrics {
 				found := false
@@ -87,9 +86,10 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 				if url := scope.GetSchemaUrl(); url != "" {
 					log = log.With(slog.String("schema", url))
 				}
+				log.Error("Got metric")
 
 				for _, match := range s.matches {
-					missing, matched := checkMetric(log, match, metric, r.Resource)
+					missing, matched := checkMetric(log, match, metric, scope.GetScope(), r.GetResource())
 					found = found || matched
 					count += missing
 					if missing > 0 {
@@ -115,7 +115,7 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 	return &pbCollectorMetrics.ExportMetricsServiceResponse{}, nil
 }
 
-func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric, res *resourcev1.Resource) (int, bool) {
+func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric, scope, resource attributeGetter) (int, bool) {
 	name := metric.GetName()
 	if !match.isNameMatch(name) {
 		return 0, false
@@ -123,29 +123,29 @@ func checkMetric(log *slog.Logger, match matchDef, metric *pbMetrics.Metric, res
 
 	switch d := metric.Data.(type) {
 	case *pbMetrics.Metric_Gauge:
-		return checkDataPoints(log, match, d.Gauge)
+		return checkDataPoints(log, match, d.Gauge, scope, resource)
 	case *pbMetrics.Metric_Sum:
-		return checkDataPoints(log, match, d.Sum)
+		return checkDataPoints(log, match, d.Sum, scope, resource)
 	case *pbMetrics.Metric_Histogram:
-		return checkDataPoints(log, match, d.Histogram)
+		return checkDataPoints(log, match, d.Histogram, scope, resource)
 	case *pbMetrics.Metric_Summary:
-		return checkDataPoints(log, match, d.Summary)
+		return checkDataPoints(log, match, d.Summary, scope, resource)
 	case *pbMetrics.Metric_ExponentialHistogram:
-		return checkDataPoints(log, match, d.ExponentialHistogram)
+		return checkDataPoints(log, match, d.ExponentialHistogram, scope, resource)
 	default:
 		log.Warn("Unsupported metric type: %t", metric.Data)
 	}
 	return 0, false
 }
 
-func checkDataPoints[T attributeGetter, D dataPointGetter[T]](log *slog.Logger, match matchDef, metric D) (int, bool) {
+func checkDataPoints[T attributeGetter, D dataPointGetter[T]](log *slog.Logger, match matchDef, metric D, scope, resource attributeGetter) (int, bool) {
 	found := false
 	count := 0
 	for _, p := range metric.GetDataPoints() {
 		if !match.isAttrMatch(p.GetAttributes()) {
 			continue
 		}
-		missing := match.compareAttributes(log, p.GetAttributes())
+		missing := match.compareAttributes(log, p.GetAttributes(), scope.GetAttributes(), resource.GetAttributes())
 		found = true
 		count += missing
 	}
