@@ -9,6 +9,7 @@ type Config struct {
 	Metrics         []Match
 	Log             []Match
 	ReportUnmatched bool `mapstructure:"report_unmatched"`
+	DisableError    bool `mapstructure:"disable_error"`
 }
 
 type Match struct {
@@ -42,4 +43,5 @@ metric:
 log:
 report_unmatched: true
 server_address: 0.0.0.0:4317
+disable_error: false
 `

@@ -14,12 +14,13 @@ import (
 )
 
 func TestTraceServerExport(t *testing.T) {
-	ts := &TraceServer{
+	defaultServer := &TraceServer{
 		matches: []matchDef{newTestMatchDef([]string{"test"}, nil)},
 	}
 	testCases := []struct {
 		name     string
 		attrs    []attribute.KeyValue
+		server   *TraceServer
 		hasError bool
 	}{
 		{
@@ -47,10 +48,24 @@ func TestTraceServerExport(t *testing.T) {
 				attribute.String("notTest", "test"),
 			},
 		},
+		{
+			name: "Disable Error",
+			attrs: []attribute.KeyValue{
+				attribute.String("notTest", "test"),
+			},
+			server: &TraceServer{
+				matches:      []matchDef{newTestMatchDef([]string{"test"}, nil)},
+				disableError: true,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			ts := defaultServer
+			if tc.server != nil {
+				ts = tc.server
+			}
 			req := newRequest(tc.attrs)
 			_, err := ts.Export(context.Background(), req)
 			if tc.hasError {

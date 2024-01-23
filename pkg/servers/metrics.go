@@ -21,6 +21,8 @@ type MetricsServer struct {
 	resource        matchDef
 	matches         []matchDef
 	reportUnmatched bool
+
+	disableError bool
 }
 
 func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *MetricsServer {
@@ -48,6 +50,7 @@ func NewMetricsService(cfg Config, svs map[string]semconv.SemanticVersion) *Metr
 		resource:        resource,
 		matches:         matches,
 		reportUnmatched: cfg.ReportUnmatched,
+		disableError:    cfg.DisableError,
 	}
 }
 
@@ -103,7 +106,7 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 		}
 	}
 
-	if count > 0 {
+	if count > 0 && !s.disableError {
 		return &pbCollectorMetrics.ExportMetricsServiceResponse{
 			PartialSuccess: &pbCollectorMetrics.ExportMetricsPartialSuccess{
 				RejectedDataPoints: int64(count),
