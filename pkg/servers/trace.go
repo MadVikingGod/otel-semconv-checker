@@ -19,6 +19,8 @@ type TraceServer struct {
 	resource        matchDef
 	matches         []matchDef
 	reportUnmatched bool
+
+	disableError bool
 }
 
 func NewTraceService(cfg Config, svs map[string]semconv.SemanticVersion) *TraceServer {
@@ -106,7 +108,7 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 		}
 	}
 
-	if count > 0 {
+	if count > 0 && !s.disableError {
 		return &pbCollectorTrace.ExportTraceServiceResponse{
 			PartialSuccess: &pbCollectorTrace.ExportTracePartialSuccess{
 				RejectedSpans: int64(count),
