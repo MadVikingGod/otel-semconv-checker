@@ -28,6 +28,7 @@ from opentelemetry.context import (
     set_value,
 )
 from docker import from_env
+from pytest import fixture
 
 logger = getLogger(__name__)
 
@@ -50,8 +51,6 @@ class OTLPTestSpanExporter(OTLPSpanExporter):
         self, data: Union[TypingSequence[ReadableSpan], MetricsData]
     ) -> ExportResultT:
 
-        from ipdb import set_trace
-        set_trace()
         # After the call to shutdown, subsequent calls to Export are
         # not allowed and should return a Failure result.
         if self._shutdown:
@@ -154,25 +153,23 @@ trace.set_tracer_provider(provider)
 tracer = trace.get_tracer("tracer_namesdfdsf")
 
 
-def test_requests():
+@fixture
+def create_kill_container():
 
-    client = from_env()
-
-    client.containers.run(
-        "ghcr.io/madvikinggod/semantic-convention-checker:0.0.4",
-        # "ghcr.io/madvikinggod/otel-semconv-checker",
+    container = from_env().containers.run(
+        "ghcr.io/madvikinggod/semantic-convention-checker:0.0.7",
         ports={"4318/tcp": 4318},
-        volumes=['/home/tigre/github/ocelotl/otel-semconv-checker/python/config.yaml:/config.yaml'],  # noqa
+        volumes=[
+            "/home/tigre/github/ocelotl/otel-semconv-checker/python/"
+            "config.yaml:/config.yaml"
+        ],
         detach=True
     )
+    yield
+    container.kill()
 
-    from ipdb import set_trace
-    set_trace()
 
-    """
-Image: "ghcr.io/madvikinggod/semantic-convention-checker:0.0.4"
-xposed Port: 4318/tcp
-    """
+def test_requests(create_kill_container):
 
     RequestsInstrumentor().instrument()
 
@@ -182,7 +179,10 @@ xposed Port: 4318/tcp
             params={"param": "hello"},
             headers={"a": "b"},
         )
-    except Exception:
+    except Exception as error:
+        raise
+        the_error = error
+        the_error
         pass
 
 
