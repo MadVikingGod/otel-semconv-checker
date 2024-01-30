@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	pbCollectorTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	common "go.opentelemetry.io/proto/otlp/common/v1"
+	resource "go.opentelemetry.io/proto/otlp/resource/v1"
 	trace "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
@@ -18,44 +19,58 @@ func TestTraceServerExport(t *testing.T) {
 		matches: []matchDef{newTestMatchDef([]string{"test"}, nil)},
 	}
 	testCases := []struct {
-		name     string
-		attrs    []attribute.KeyValue
-		server   *TraceServer
-		hasError bool
+		name       string
+		traceAttrs []attribute.KeyValue
+		scopeAttrs []attribute.KeyValue
+		resAttrs   []attribute.KeyValue
+		server     *TraceServer
+		hasError   bool
 	}{
 		{
 			name: "matches",
-			attrs: []attribute.KeyValue{
+			traceAttrs: []attribute.KeyValue{
 				attribute.String("test", "test"),
 			},
 		},
 		{
-			name:     "no attributes",
-			attrs:    []attribute.KeyValue{},
-			hasError: true,
+			name:       "no attributes",
+			traceAttrs: []attribute.KeyValue{},
+			hasError:   true,
 		},
 		{
 			name: "no matches",
-			attrs: []attribute.KeyValue{
+			traceAttrs: []attribute.KeyValue{
 				attribute.String("notTest", "test"),
 			},
 			hasError: true,
 		},
 		{
 			name: "extra attributes",
-			attrs: []attribute.KeyValue{
+			traceAttrs: []attribute.KeyValue{
 				attribute.String("test", "test"),
 				attribute.String("notTest", "test"),
 			},
 		},
 		{
 			name: "Disable Error",
-			attrs: []attribute.KeyValue{
+			traceAttrs: []attribute.KeyValue{
 				attribute.String("notTest", "test"),
 			},
 			server: &TraceServer{
 				matches:      []matchDef{newTestMatchDef([]string{"test"}, nil)},
 				disableError: true,
+			},
+		},
+		{
+			name: "Match Scope Attrs",
+			scopeAttrs: []attribute.KeyValue{
+				attribute.String("test", "test"),
+			},
+		},
+		{
+			name: "Match Resource Attrs",
+			resAttrs: []attribute.KeyValue{
+				attribute.String("test", "test"),
 			},
 		},
 	}
@@ -66,7 +81,7 @@ func TestTraceServerExport(t *testing.T) {
 			if tc.server != nil {
 				ts = tc.server
 			}
-			req := newRequest(tc.attrs)
+			req := newRequest(tc.traceAttrs, tc.scopeAttrs, tc.resAttrs)
 			_, err := ts.Export(context.Background(), req)
 			if tc.hasError {
 				if err == nil {
@@ -85,36 +100,52 @@ func TestTraceServerExport(t *testing.T) {
 	}
 }
 
-func newRequest(attrs []attribute.KeyValue) *pbCollectorTrace.ExportTraceServiceRequest {
-	attributes := make([]*common.KeyValue, len(attrs))
-	for i, attr := range attrs {
-		attributes[i] = &common.KeyValue{
-			Key:   string(attr.Key),
-			Value: createValue(attr.Value.Emit()),
-		}
+func newRequest(traceAttrs, scopeAttrs, resAttrs []attribute.KeyValue) *pbCollectorTrace.ExportTraceServiceRequest {
+	tAttrs := createKeyValues(traceAttrs)
+	sAttrs := createKeyValues(scopeAttrs)
+	rAttrs := createKeyValues(resAttrs)
+
+	res := &resource.Resource{
+		Attributes: rAttrs,
 	}
-	if len(attributes) == 0 {
-		attributes = nil
+	if len(resAttrs) == 0 {
+		res = nil
 	}
 
 	return &pbCollectorTrace.ExportTraceServiceRequest{
 		ResourceSpans: []*trace.ResourceSpans{
 			{
+				Resource: res,
 				ScopeSpans: []*trace.ScopeSpans{
 					{
 						Scope: &common.InstrumentationScope{
-							Name: "TestScope",
+							Name:       "TestScope",
+							Attributes: sAttrs,
 						},
 						Spans: []*trace.Span{
 							{
 								Name:       "test",
-								Attributes: attributes,
+								Attributes: tAttrs,
 							},
 						}},
 				},
 			},
 		},
 	}
+}
+
+func createKeyValues(attrs []attribute.KeyValue) []*common.KeyValue {
+	keyValues := make([]*common.KeyValue, len(attrs))
+	for i, attr := range attrs {
+		keyValues[i] = &common.KeyValue{
+			Key:   string(attr.Key),
+			Value: createValue(attr.Value.Emit()),
+		}
+	}
+	if len(keyValues) == 0 {
+		keyValues = nil
+	}
+	return keyValues
 }
 
 func createValue(value string) *common.AnyValue {
