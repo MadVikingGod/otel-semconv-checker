@@ -13,6 +13,8 @@ func TestParseGroups(t *testing.T) {
 		"src/v1.20.0",
 		"src/v1.21.0",
 		"src/v1.22.0",
+		"src/v1.23.0",
+		"src/v1.24.0",
 	}
 
 	for _, dir := range tests {
@@ -48,5 +50,5 @@ func TestParseSemanticVersion(t *testing.T) {
 	versions, err := ParseSemanticVersion()
 
 	assert.NoError(t, err)
-	assert.Len(t, versions, 3)
+	assert.Len(t, versions, 5)
 }
