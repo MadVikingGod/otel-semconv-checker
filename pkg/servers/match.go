@@ -33,10 +33,14 @@ func newMatchDef(m Match, g map[string]semconv.Group) matchDef {
 	for _, group := range m.Groups {
 		groups = append(groups, g[group])
 	}
+	attrs := map[string]string{}
+	for _, attr := range m.MatchAttributes {
+		attrs[attr.Name] = attr.Value
+	}
 	return matchDef{
 		name:             reg,
 		semVer:           semver,
-		attrs:            m.MatchAttributes,
+		attrs:            attrs,
 		group:            append(semconv.GetAttributes(groups...), m.Include...),
 		ignore:           m.Ignore,
 		reportAdditional: m.ReportAdditional,

@@ -15,17 +15,22 @@ type Config struct {
 type Match struct {
 	SemanticVersion  string `mapstructure:"semantic_version"`
 	Match            string
-	MatchAttributes  map[string]string `mapstructure:"match_attributes"`
+	MatchAttributes  []Attribute `mapstructure:"match_attributes"`
 	Groups           []string
 	Ignore           []string
 	Include          []string
 	ReportAdditional bool `mapstructure:"report_additional"`
 }
 
+type Attribute struct {
+	Name  string
+	Value string
+}
+
 var DefaultConfig = `---
 resource:
   match_attributes:
-    service.name: ""
+    - name: "service.name"
   groups:
   - host
   - os

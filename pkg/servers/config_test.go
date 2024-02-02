@@ -24,7 +24,7 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, cfg.Trace[0].Match, "http.server.*")
 	assert.GreaterOrEqual(t, len(cfg.Trace[0].Groups), 1)
 
-	assert.Contains(t, cfg.Resource.MatchAttributes, "service.name")
+	assert.Contains(t, cfg.Resource.MatchAttributes, Attribute{Name: "service.name"})
 
 	assert.NotPanics(t, func() {
 		NewTraceService(cfg, nil)
