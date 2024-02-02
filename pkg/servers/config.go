@@ -31,7 +31,7 @@ var DefaultConfig = `---
 resource:
   match_attributes:
     - name:"service.name"
-	  value: foo
+      value: foo
   groups:
   - host
   - os
