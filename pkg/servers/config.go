@@ -30,8 +30,7 @@ type Attribute struct {
 var DefaultConfig = `---
 resource:
   match_attributes:
-    - name:"service.name"
-      value: foo
+    - name: "service.name"
   groups:
   - host
   - os
