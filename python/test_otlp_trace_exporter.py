@@ -157,7 +157,7 @@ tracer = trace.get_tracer("tracer_namesdfdsf")
 def create_kill_container():
 
     container = from_env().containers.run(
-        "ghcr.io/madvikinggod/semantic-convention-checker:0.0.7",
+        "ghcr.io/madvikinggod/semantic-convention-checker:0.0.8",
         ports={"4318/tcp": 4318},
         volumes=[
             "/home/tigre/github/ocelotl/otel-semconv-checker/python/"
