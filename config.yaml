@@ -8,7 +8,7 @@ resource:
   - "resource.name"
   report_additional: true
 trace:
-- match: http.server.*
+- match: opentelemetry.instrumentation.*
   groups:
   - trace.http.server
   ignore:
