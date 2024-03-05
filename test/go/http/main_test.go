@@ -4,11 +4,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -30,22 +28,18 @@ func (l *lc) Accept(log testcontainers.Log) {
 }
 
 func TestHttp(t *testing.T) {
-	wd, err := os.Getwd()
 	ctx := context.Background()
 	req := testcontainers.ContainerRequest{
-		Image:        "ghcr.io/madvikinggod/semantic-convention-checker:0.0.4",
+		Image:        "ghcr.io/madvikinggod/semantic-convention-checker:0.0.8",
 		ExposedPorts: []string{"4318/tcp"},
 		WaitingFor: wait.ForAll(
 			wait.ForListeningPort("4318/tcp"),
 			wait.ForLog("INFO starting server address="),
 		),
-
-		Mounts: []testcontainers.ContainerMount{
+		Files: []testcontainers.ContainerFile{
 			{
-				Source: testcontainers.GenericBindMountSource{
-					HostPath: fmt.Sprintf("%s/config.yaml", wd),
-				},
-				Target: "/config.yaml",
+				HostFilePath:      "config.yaml",
+				ContainerFilePath: "/config.yaml",
 			},
 		},
 	}

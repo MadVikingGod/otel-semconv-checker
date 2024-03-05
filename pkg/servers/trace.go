@@ -60,29 +60,34 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 	count := 0
 	names := []string{}
 	for _, r := range req.ResourceSpans {
-		if s.resource.semVer != nil && *s.resource.semVer != "" && r.SchemaUrl != *s.resource.semVer {
-			log.Info("incorrect resource version",
-				slog.String("section", "resource"),
-				slog.String("version", r.SchemaUrl),
-				slog.String("expected", *s.resource.semVer),
-			)
+		if schema := r.GetSchemaUrl(); schema != "" {
+			log = log.With("resource.schema", schema)
 		}
-		if r.Resource != nil {
-			log := log.With(
-				slog.String("section", "resource"),
-				slog.String("version", r.SchemaUrl),
-			)
-
-			s.resource.compareAttributes(log, r.Resource.Attributes)
+		if attr := r.Resource.GetAttributes(); len(attr) > 0 {
+			name := ""
+			for _, kv := range attr {
+				if kv.Key == "service.name" {
+					name = kv.Value.String()
+				}
+			}
+			if name != "" {
+				log = log.With("service.name", name)
+			}
 		}
 
 		for _, scope := range r.ScopeSpans {
 			log := log.With(slog.String("section", "span"))
-			if scope.Scope != nil {
-				log = log.With(slog.String("scope.name", scope.Scope.Name))
+
+			if scope := scope.GetScope(); scope != nil {
+				if name := scope.GetName(); name != "" {
+					log = log.With(slog.String("scope.name", name))
+				}
+				if version := scope.GetVersion(); version != "" {
+					log = log.With(slog.String("scope.version", version))
+				}
 			}
 			if url := scope.GetSchemaUrl(); url != "" {
-				log = log.With(slog.String("schema", url))
+				log = log.With(slog.String("scope.schema", url))
 			}
 
 			for _, span := range scope.Spans {
