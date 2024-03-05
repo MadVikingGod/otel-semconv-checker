@@ -56,10 +56,10 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 	if req == nil {
 		return nil, nil
 	}
-	log := slog.With("type", "trace")
 	count := 0
 	names := []string{}
 	for _, r := range req.ResourceSpans {
+		log := slog.With("type", "trace")
 		if schema := r.GetSchemaUrl(); schema != "" {
 			log = log.With("resource.schema", schema)
 		}
@@ -67,7 +67,10 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 			name := ""
 			for _, kv := range attr {
 				if kv.Key == "service.name" {
-					name = kv.Value.String()
+					name = kv.Value.GetStringValue()
+				}
+				if name == "" {
+					name = kv.String()
 				}
 			}
 			if name != "" {

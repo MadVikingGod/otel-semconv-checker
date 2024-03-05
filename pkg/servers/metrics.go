@@ -58,10 +58,10 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 	if req == nil {
 		return nil, nil
 	}
-	log := slog.With("type", "metrics")
 	count := 0
 	names := []string{}
 	for _, r := range req.ResourceMetrics {
+		log := slog.With("type", "metrics")
 		if schema := r.GetSchemaUrl(); schema != "" {
 			log = log.With("resource.schema", schema)
 		}
@@ -69,7 +69,10 @@ func (s *MetricsServer) Export(ctx context.Context, req *pbCollectorMetrics.Expo
 			name := ""
 			for _, kv := range attr {
 				if kv.Key == "service.name" {
-					name = kv.Value.String()
+					name = kv.Value.GetStringValue()
+				}
+				if name == "" {
+					name = kv.String()
 				}
 			}
 			if name != "" {
