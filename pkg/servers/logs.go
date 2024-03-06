@@ -8,14 +8,14 @@ import (
 	"log/slog"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
-	pbCollectorTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	pbCollectorLogs "go.opentelemetry.io/proto/otlp/collector/logs/v1"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type TraceServer struct {
-	pbCollectorTrace.UnimplementedTraceServiceServer
-
+type LogServer struct {
+	pbCollectorLogs.UnimplementedLogsServiceServer
 	resource        matchDef
 	matches         []matchDef
 	reportUnmatched bool
@@ -23,7 +23,9 @@ type TraceServer struct {
 	disableError bool
 }
 
-func NewTraceService(cfg Config, svs map[string]semconv.SemanticVersion) *TraceServer {
+var _ pbCollectorLogs.LogsServiceServer = &LogServer{}
+
+func NewLogService(cfg Config, svs map[string]semconv.SemanticVersion) *LogServer {
 	_, found := svs[cfg.Resource.SemanticVersion]
 	if cfg.Resource.SemanticVersion != "" && !found {
 		cfg.Resource.SemanticVersion = semconv.DefaultVersion
@@ -45,7 +47,7 @@ func NewTraceService(cfg Config, svs map[string]semconv.SemanticVersion) *TraceS
 		matches = append(matches, newMatchDef(match, groups.Groups))
 	}
 
-	return &TraceServer{
+	return &LogServer{
 		resource:        resource,
 		matches:         matches,
 		reportUnmatched: cfg.ReportUnmatched,
@@ -53,13 +55,13 @@ func NewTraceService(cfg Config, svs map[string]semconv.SemanticVersion) *TraceS
 	}
 }
 
-func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTraceServiceRequest) (*pbCollectorTrace.ExportTraceServiceResponse, error) {
+func (s *LogServer) Export(ctx context.Context, req *pbCollectorLogs.ExportLogsServiceRequest) (*pbCollectorLogs.ExportLogsServiceResponse, error) {
 	if req == nil {
 		return nil, nil
 	}
 	count := 0
 	names := []string{}
-	for _, r := range req.ResourceSpans {
+	for _, r := range req.ResourceLogs {
 		log := slog.With("type", "trace")
 		if schema := r.GetSchemaUrl(); schema != "" {
 			log = log.With("resource.schema", schema)
@@ -79,8 +81,8 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 			}
 		}
 
-		for _, scope := range r.ScopeSpans {
-			log := log.With(slog.String("section", "span"))
+		for _, scope := range r.ScopeLogs {
+			log := log.With(slog.String("section", "logs"))
 
 			if scope := scope.GetScope(); scope != nil {
 				if name := scope.GetName(); name != "" {
@@ -94,20 +96,23 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 				log = log.With(slog.String("scope.schema", url))
 			}
 
-			for _, span := range scope.Spans {
+			for _, record := range scope.LogRecords {
 				found := false
-				name := span.GetName()
+				name := record.GetBody().String()
+				if len(name) > 100 {
+					name = name[:100]
+				}
 				log := log.With(slog.String("name", name))
 				for _, match := range s.matches {
-					if !match.isMatch(name, span.GetAttributes()) {
+					if !match.isMatch(record.GetBody().String(), record.GetAttributes()) {
 						continue
 					}
 
-					missing := match.compareAttributes(log, span.GetAttributes(), scope.GetScope().GetAttributes(), r.GetResource().GetAttributes())
+					missing := match.compareAttributes(log, record.GetAttributes(), scope.GetScope().GetAttributes(), r.GetResource().GetAttributes())
 					found = true
 					count += missing
 					if missing > 0 {
-						names = append(names, fmt.Sprintf("%s/%s", scope.Scope.GetName(), span.Name))
+						names = append(names, fmt.Sprintf("%s/%s", scope.Scope.GetName(), name))
 					}
 				}
 				if !found && s.reportUnmatched {
@@ -118,13 +123,13 @@ func (s *TraceServer) Export(ctx context.Context, req *pbCollectorTrace.ExportTr
 	}
 
 	if count > 0 && !s.disableError {
-		return &pbCollectorTrace.ExportTraceServiceResponse{
-			PartialSuccess: &pbCollectorTrace.ExportTracePartialSuccess{
-				RejectedSpans: int64(count),
-				ErrorMessage:  "missing attributes",
+		return &pbCollectorLogs.ExportLogsServiceResponse{
+			PartialSuccess: &pbCollectorLogs.ExportLogsPartialSuccess{
+				RejectedLogRecords: int64(count),
+				ErrorMessage:       "missing attributes",
 			},
 		}, status.Error(codes.FailedPrecondition, fmt.Sprintf("missing attributes: %v", names))
 	}
 
-	return &pbCollectorTrace.ExportTraceServiceResponse{}, nil
+	return &pbCollectorLogs.ExportLogsServiceResponse{}, nil
 }
