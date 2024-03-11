@@ -3,7 +3,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -53,20 +52,11 @@ func main() {
 	grpcServer := grpc.NewServer()
 	pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, svs))
 	pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, svs))
-	pbLog.RegisterLogsServiceServer(grpcServer, &logServer{g: nil})
+	pbLog.RegisterLogsServiceServer(grpcServer, servers.NewLogService(cfg, svs))
 
 	slog.Info("starting server", "address", cfg.ServerAddress)
 	if err := grpcServer.Serve(lis); err != nil {
 		slog.Error("failed to serve", "error", err)
 		return
 	}
-}
-
-type logServer struct {
-	pbLog.UnimplementedLogsServiceServer
-	g map[string]semconv.Group
-}
-
-func (s *logServer) Export(ctx context.Context, req *pbLog.ExportLogsServiceRequest) (*pbLog.ExportLogsServiceResponse, error) {
-	return nil, nil
 }
