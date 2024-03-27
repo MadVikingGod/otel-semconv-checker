@@ -38,7 +38,7 @@ func NewLogService(cfg Config, svs map[string]semconv.SemanticVersion) *LogServe
 	resource := newMatchDef(cfg.Resource, svs[resSemVer].Groups)
 
 	matches := []matchDef{}
-	for _, match := range cfg.Trace {
+	for _, match := range cfg.Log {
 		groups, ok := svs[match.SemanticVersion]
 		if !ok {
 			match.SemanticVersion = semconv.DefaultVersion
@@ -62,7 +62,7 @@ func (s *LogServer) Export(ctx context.Context, req *pbCollectorLogs.ExportLogsS
 	count := 0
 	names := []string{}
 	for _, r := range req.ResourceLogs {
-		log := slog.With("type", "trace")
+		log := slog.With("type", "log")
 		if schema := r.GetSchemaUrl(); schema != "" {
 			log = log.With("resource.schema", schema)
 		}
@@ -116,7 +116,7 @@ func (s *LogServer) Export(ctx context.Context, req *pbCollectorLogs.ExportLogsS
 					}
 				}
 				if !found && s.reportUnmatched {
-					log.Info("unmatched span")
+					log.Info("unmatched log")
 				}
 			}
 		}
