@@ -2,6 +2,11 @@
 
 package servers
 
+import (
+	"log/slog"
+	"os"
+)
+
 type Config struct {
 	ServerAddress   string `mapstructure:"server_address"`
 	Resource        Match
@@ -50,3 +55,5 @@ report_unmatched: true
 server_address: 0.0.0.0:4317
 disable_error: false
 `
+
+var logger *slog.Logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))

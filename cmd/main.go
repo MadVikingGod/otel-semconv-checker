@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/viper"
 	pbLog "go.opentelemetry.io/proto/otlp/collector/logs/v1"
 	pbMetric "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
-	pbTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
 )
@@ -50,7 +49,10 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, svs))
+
+	servers.RegisterTraceServer(grpcServer, cfg, svs)
+
+	// pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, svs))
 	pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, svs))
 	pbLog.RegisterLogsServiceServer(grpcServer, servers.NewLogService(cfg, svs))
 
