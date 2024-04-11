@@ -15,6 +15,7 @@ type matchDef struct {
 	attrs  map[string]string
 	semVer *string
 	group  []string
+	group2 map[string]struct{}
 	ignore []string
 
 	reportAdditional bool
@@ -37,11 +38,17 @@ func newMatchDef(m Match, g map[string]semconv.Group) matchDef {
 	for _, attr := range m.MatchAttributes {
 		attrs[attr.Name] = attr.Value
 	}
+	group2 := map[string]struct{}{}
+	for _, attr := range append(semconv.GetAttributes(groups...), m.Include...) {
+		group2[attr] = struct{}{}
+	}
+
 	return matchDef{
 		name:             reg,
 		semVer:           semver,
 		attrs:            attrs,
 		group:            append(semconv.GetAttributes(groups...), m.Include...),
+		group2:           group2,
 		ignore:           m.Ignore,
 		reportAdditional: m.ReportAdditional,
 	}

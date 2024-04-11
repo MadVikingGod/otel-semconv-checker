@@ -2,7 +2,9 @@
 
 package semconv
 
-import pbCommon "go.opentelemetry.io/proto/otlp/common/v1"
+import (
+	pbCommon "go.opentelemetry.io/proto/otlp/common/v1"
+)
 
 func Compare(attrSlice []string, attributes ...[]*pbCommon.KeyValue) (missing []string, extra []string) {
 	attrs := map[string]bool{}
