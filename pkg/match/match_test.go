@@ -8,16 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 )
-
-func newTestMatchDef(groups []string, ignore []string) matchDef {
-	return matchDef{
-		name:   regexp.MustCompile(`.*`),
-		group:  groups,
-		ignore: ignore,
-	}
-}
 
 func Test_matchDef_isMatch(t *testing.T) {
 	matchDefFilled := matchDef{
@@ -195,15 +186,9 @@ func Test_matchDef_isMatch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := pcommon.NewMap()
-			m.FromRaw(tt.args.attrs)
+			err := m.FromRaw(tt.args.attrs)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.want, tt.match.isMatch(tt.args.name, m))
 		})
-	}
-}
-
-func createKeyValue(key, value string) *v1.KeyValue {
-	return &v1.KeyValue{
-		Key:   key,
-		Value: &v1.AnyValue{Value: &v1.AnyValue_StringValue{StringValue: value}},
 	}
 }

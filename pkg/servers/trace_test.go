@@ -9,6 +9,7 @@ import (
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"go.opentelemetry.io/otel/attribute"
@@ -94,7 +95,7 @@ func TestPTraceExport(t *testing.T) {
 			if tc.server != nil {
 				ts = tc.server
 			}
-			req := newPdataRequest(tc.traceAttrs, tc.scopeAttrs, tc.resAttrs)
+			req := newPdataRequest(t, tc.traceAttrs, tc.scopeAttrs, tc.resAttrs)
 			_, err := ts.Export(context.Background(), req)
 			if tc.hasError {
 				if err == nil {
@@ -113,7 +114,7 @@ func TestPTraceExport(t *testing.T) {
 	}
 }
 
-func newPdataRequest(traceAttrs, scopeAttrs, resAttrs []attribute.KeyValue) ptraceotlp.ExportRequest {
+func newPdataRequest(t *testing.T, traceAttrs, scopeAttrs, resAttrs []attribute.KeyValue) ptraceotlp.ExportRequest {
 	tAttrs := testCreateMap(traceAttrs)
 	sAttrs := testCreateMap(scopeAttrs)
 	rAttrs := testCreateMap(resAttrs)
@@ -122,19 +123,22 @@ func newPdataRequest(traceAttrs, scopeAttrs, resAttrs []attribute.KeyValue) ptra
 	req.Traces().ResourceSpans().AppendEmpty()
 	rs := req.Traces().ResourceSpans().At(0)
 	if len(resAttrs) != 0 {
-		rs.Resource().Attributes().FromRaw(rAttrs)
+		err := rs.Resource().Attributes().FromRaw(rAttrs)
+		assert.NoError(t, err)
 	}
 	rs.ScopeSpans().AppendEmpty()
 	ss := rs.ScopeSpans().At(0)
 	ss.Scope().SetName("TestScope")
 	if len(sAttrs) != 0 {
-		ss.Scope().Attributes().FromRaw(sAttrs)
+		err := ss.Scope().Attributes().FromRaw(sAttrs)
+		assert.NoError(t, err)
 	}
 	ss.Spans().AppendEmpty()
 	span := ss.Spans().At(0)
 	span.SetName("test")
 	if len(tAttrs) != 0 {
-		span.Attributes().FromRaw(tAttrs)
+		err := span.Attributes().FromRaw(tAttrs)
+		assert.NoError(t, err)
 	}
 
 	return req

@@ -4,6 +4,7 @@ package match
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
@@ -184,10 +185,22 @@ func TestTraces_Match(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tr := NewTraces(tt.config, svs)
-			gotFound, gotNotFound := tr.Match(context.TODO(), tt.req.Req())
+			gotFound, gotNotFound := tr.Match(context.TODO(), tt.req.Req(t))
+			// Sort slice fields.  [Extra]Attributes are populated by a map and can be in random order.
+			testSortResps(tt.wantFound)
+			testSortResps(gotFound)
 			assert.ElementsMatch(t, tt.wantFound, gotFound)
+			testSortResps(tt.wantNotFound)
+			testSortResps(gotNotFound)
 			assert.ElementsMatch(t, tt.wantNotFound, gotNotFound)
 		})
+	}
+}
+
+func testSortResps(resps []Response) {
+	for _, resp := range resps {
+		slices.Sort(resp.Attributes)
+		slices.Sort(resp.ExtraAttributes)
 	}
 }
 
@@ -211,7 +224,8 @@ type testSpans struct {
 	attrs map[string]any
 }
 
-func (t testSpanReq) Req() ptraceotlp.ExportRequest {
+func (t testSpanReq) Req(tt *testing.T) ptraceotlp.ExportRequest {
+	tt.Helper()
 	req := ptraceotlp.NewExportRequest()
 	trace := req.Traces()
 	for i, tRes := range t.resSpans {
@@ -223,7 +237,8 @@ func (t testSpanReq) Req() ptraceotlp.ExportRequest {
 			tRes.resourceAttr = map[string]any{}
 		}
 		tRes.resourceAttr["service.name"] = tRes.serviceName
-		res.Attributes().FromRaw(tRes.resourceAttr)
+		err := res.Attributes().FromRaw(tRes.resourceAttr)
+		assert.NoError(tt, err)
 
 		scopes := rs.ScopeSpans()
 
@@ -231,14 +246,16 @@ func (t testSpanReq) Req() ptraceotlp.ExportRequest {
 			scopes.AppendEmpty()
 			scp := scopes.At(j)
 			scp.Scope().SetName(tscp.scopeName)
-			scp.Scope().Attributes().FromRaw(tscp.scopeAttrs)
+			err = scp.Scope().Attributes().FromRaw(tscp.scopeAttrs)
+			assert.NoError(tt, err)
 
 			spans := scp.Spans()
 			for k, tTrace := range tscp.traces {
 				spans.AppendEmpty()
 				span := spans.At(k)
 				span.SetName(tTrace.name)
-				span.Attributes().FromRaw(tTrace.attrs)
+				err = span.Attributes().FromRaw(tTrace.attrs)
+				assert.NoError(tt, err)
 			}
 		}
 	}
