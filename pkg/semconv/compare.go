@@ -3,7 +3,6 @@
 package semconv
 
 import (
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	pbCommon "go.opentelemetry.io/proto/otlp/common/v1"
 )
 
@@ -25,30 +24,6 @@ func Compare(attrSlice []string, attributes ...[]*pbCommon.KeyValue) (missing []
 		if !v {
 			extra = append(extra, k)
 		}
-	}
-	return missing, extra
-}
-
-func ComparePdata(attrs map[string]struct{}, attributes ...pcommon.Map) (missing []string, extra []string) {
-	for a, _ := range attrs {
-		found := false
-		for _, attribute := range attributes {
-			if _, f := attribute.Get(a); f {
-				found = true
-				break
-			}
-		}
-		if !found {
-			missing = append(missing, a)
-		}
-	}
-	for _, attrMap := range attributes {
-		attrMap.Range(func(k string, _ pcommon.Value) bool {
-			if _, found := attrs[k]; !found {
-				extra = append(extra, k)
-			}
-			return true
-		})
 	}
 	return missing, extra
 }

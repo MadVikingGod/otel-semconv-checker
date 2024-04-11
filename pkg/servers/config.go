@@ -5,6 +5,8 @@ package servers
 import (
 	"log/slog"
 	"os"
+
+	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
 )
 
 type Config struct {
@@ -17,20 +19,7 @@ type Config struct {
 	DisableError    bool `mapstructure:"disable_error"`
 }
 
-type Match struct {
-	SemanticVersion  string `mapstructure:"semantic_version"`
-	Match            string
-	MatchAttributes  []Attribute `mapstructure:"match_attributes"`
-	Groups           []string
-	Ignore           []string
-	Include          []string
-	ReportAdditional bool `mapstructure:"report_additional"`
-}
-
-type Attribute struct {
-	Name  string
-	Value string
-}
+type Match = match.Match
 
 var DefaultConfig = `---
 resource:

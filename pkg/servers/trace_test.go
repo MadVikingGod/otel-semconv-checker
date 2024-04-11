@@ -7,23 +7,31 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
+	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"go.opentelemetry.io/otel/attribute"
-	pbCollectorTrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	common "go.opentelemetry.io/proto/otlp/common/v1"
-	resource "go.opentelemetry.io/proto/otlp/resource/v1"
-	trace "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
-func TestTraceServerExport(t *testing.T) {
-	defaultServer := &TraceServer{
-		matches: []matchDef{newTestMatchDef([]string{"test"}, nil)},
+func TestPTraceExport(t *testing.T) {
+	svs, err := semconv.ParseSemanticVersion()
+	require.NoError(t, err)
+	defaultServer := &trace{
+		trace: match.NewTraces([]Match{
+			{
+				Match:   `.*`,
+				Include: []string{"test"},
+			},
+		}, svs),
 	}
+
 	testCases := []struct {
 		name       string
 		traceAttrs []attribute.KeyValue
 		scopeAttrs []attribute.KeyValue
 		resAttrs   []attribute.KeyValue
-		server     *TraceServer
+		server     *trace
 		hasError   bool
 	}{
 		{
@@ -56,8 +64,13 @@ func TestTraceServerExport(t *testing.T) {
 			traceAttrs: []attribute.KeyValue{
 				attribute.String("notTest", "test"),
 			},
-			server: &TraceServer{
-				matches:      []matchDef{newTestMatchDef([]string{"test"}, nil)},
+			server: &trace{
+				trace: match.NewTraces([]match.Match{
+					{
+						Match:   `.*`,
+						Include: []string{"test"},
+					},
+				}, svs),
 				disableError: true,
 			},
 		},
@@ -81,7 +94,7 @@ func TestTraceServerExport(t *testing.T) {
 			if tc.server != nil {
 				ts = tc.server
 			}
-			req := newRequest(tc.traceAttrs, tc.scopeAttrs, tc.resAttrs)
+			req := newPdataRequest(tc.traceAttrs, tc.scopeAttrs, tc.resAttrs)
 			_, err := ts.Export(context.Background(), req)
 			if tc.hasError {
 				if err == nil {
@@ -100,54 +113,37 @@ func TestTraceServerExport(t *testing.T) {
 	}
 }
 
-func newRequest(traceAttrs, scopeAttrs, resAttrs []attribute.KeyValue) *pbCollectorTrace.ExportTraceServiceRequest {
-	tAttrs := createKeyValues(traceAttrs)
-	sAttrs := createKeyValues(scopeAttrs)
-	rAttrs := createKeyValues(resAttrs)
+func newPdataRequest(traceAttrs, scopeAttrs, resAttrs []attribute.KeyValue) ptraceotlp.ExportRequest {
+	tAttrs := testCreateMap(traceAttrs)
+	sAttrs := testCreateMap(scopeAttrs)
+	rAttrs := testCreateMap(resAttrs)
 
-	res := &resource.Resource{
-		Attributes: rAttrs,
+	req := ptraceotlp.NewExportRequest()
+	req.Traces().ResourceSpans().AppendEmpty()
+	rs := req.Traces().ResourceSpans().At(0)
+	if len(resAttrs) != 0 {
+		rs.Resource().Attributes().FromRaw(rAttrs)
 	}
-	if len(resAttrs) == 0 {
-		res = nil
+	rs.ScopeSpans().AppendEmpty()
+	ss := rs.ScopeSpans().At(0)
+	ss.Scope().SetName("TestScope")
+	if len(sAttrs) != 0 {
+		ss.Scope().Attributes().FromRaw(sAttrs)
+	}
+	ss.Spans().AppendEmpty()
+	span := ss.Spans().At(0)
+	span.SetName("test")
+	if len(tAttrs) != 0 {
+		span.Attributes().FromRaw(tAttrs)
 	}
 
-	return &pbCollectorTrace.ExportTraceServiceRequest{
-		ResourceSpans: []*trace.ResourceSpans{
-			{
-				Resource: res,
-				ScopeSpans: []*trace.ScopeSpans{
-					{
-						Scope: &common.InstrumentationScope{
-							Name:       "TestScope",
-							Attributes: sAttrs,
-						},
-						Spans: []*trace.Span{
-							{
-								Name:       "test",
-								Attributes: tAttrs,
-							},
-						}},
-				},
-			},
-		},
-	}
+	return req
 }
 
-func createKeyValues(attrs []attribute.KeyValue) []*common.KeyValue {
-	keyValues := make([]*common.KeyValue, len(attrs))
-	for i, attr := range attrs {
-		keyValues[i] = &common.KeyValue{
-			Key:   string(attr.Key),
-			Value: createValue(attr.Value.Emit()),
-		}
+func testCreateMap(attrs []attribute.KeyValue) map[string]any {
+	m := map[string]any{}
+	for _, kv := range attrs {
+		m[string(kv.Key)] = kv.Value.AsString()
 	}
-	if len(keyValues) == 0 {
-		keyValues = nil
-	}
-	return keyValues
-}
-
-func createValue(value string) *common.AnyValue {
-	return &common.AnyValue{Value: &common.AnyValue_StringValue{StringValue: value}}
+	return m
 }

@@ -7,7 +7,6 @@ import (
 	"regexp"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 )
 
@@ -59,10 +58,6 @@ func (m matchDef) isMatch(name string, attrs []*v1.KeyValue) bool {
 	return m.isNameMatch(name) && m.isAttrMatch(attrs)
 }
 
-func (m matchDef) isPMatch(name string, attrs pcommon.Map) bool {
-	return m.isNameMatch(name) && m.isPAttrMatch(attrs)
-}
-
 func (m matchDef) isNameMatch(name string) bool {
 	if m.name != nil {
 		return m.name.MatchString(name)
@@ -89,36 +84,8 @@ func (m matchDef) isAttrMatch(attrs []*v1.KeyValue) bool {
 	return true
 }
 
-func (m matchDef) isPAttrMatch(attrs pcommon.Map) bool {
-	if len(m.attrs) == 0 {
-		return true
-	}
-	for key, val := range m.attrs {
-		sval, found := attrs.Get(key)
-		if !found {
-			return false
-		}
-		if val == "" {
-			continue
-		}
-		if val != sval.AsString() {
-			return false
-		}
-	}
-	return true
-}
-
 func (m matchDef) compareAttributes(log *slog.Logger, attrs ...[]*v1.KeyValue) int {
 	missing, extra := semconv.Compare(m.group, attrs...)
-	missing, extra = filter(missing, m.ignore), filter(extra, m.ignore)
-
-	m.logAttributes(log, missing, extra)
-
-	return len(missing)
-}
-
-func (m matchDef) comparePAttributes(log *slog.Logger, attrs ...pcommon.Map) int {
-	missing, extra := semconv.ComparePdata(m.group2, attrs...)
 	missing, extra = filter(missing, m.ignore), filter(extra, m.ignore)
 
 	m.logAttributes(log, missing, extra)
