@@ -1,0 +1,51 @@
+            	            	extra elements in list B:
+            	            	([]interface {}) (len=3) {
+            	            	 (match.Response) {
+            	            	  Type: (string) (len=5) "Trace",
+            	            	  ResourceSchema: (string) "",
+            	            	  ServiceName: (string) (len=10) "match peer",
+            	            	  ScopeName: (string) "",
+            	            	  ScopeVersion: (string) "",
+            	            	  ScopeURL: (string) "",
+            	            	  Name: (string) (len=12) "testResource",
+            	            	  Attributes: ([]string) (len=1) {
+            	            	   (string) (len=12) "peer.service"
+            	            	  },
+            	            	  ExtraAttributes: ([]string) (len=2) {
+            	            	   (string) (len=12) "service.name",
+            	            	   (string) (len=14) "NotPeerService"
+            	            	  }
+            	            	 },
+            	            	 (match.Response) {
+            	            	  Type: (string) (len=5) "Trace",
+            	            	  ResourceSchema: (string) "",
+            	            	  ServiceName: (string) (len=10) "match peer",
+            	            	  ScopeName: (string) "",
+            	            	  ScopeVersion: (string) "",
+            	            	  ScopeURL: (string) "",
+            	            	  Name: (string) (len=9) "testScope",
+            	            	  Attributes: ([]string) (len=1) {
+            	            	   (string) (len=12) "peer.service"
+            	            	  },
+            	            	  ExtraAttributes: ([]string) (len=2) {
+            	            	   (string) (len=14) "NotPeerService",
+            	            	   (string) (len=12) "service.name"
+            	            	  }
+            	            	 },
+            	            	 (match.Response) {
+            	            	  Type: (string) (len=5) "Trace",
+            	            	  ResourceSchema: (string) "",
+            	            	  ServiceName: (string) (len=10) "match peer",
+            	            	  ScopeName: (string) "",
+            	            	  ScopeVersion: (string) "",
+            	            	  ScopeURL: (string) "",
+            	            	  Name: (string) (len=8) "testSpan",
+            	            	  Attributes: ([]string) (len=1) {
+            	            	   (string) (len=12) "peer.service"
+            	            	  },
+            	            	  ExtraAttributes: ([]string) (len=2) {
+            	            	   (string) (len=12) "service.name",
+            	            	   (string) (len=14) "NotPeerService"
+            	            	  }
+            	            	 }
+            	            	}

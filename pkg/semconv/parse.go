@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"path"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -35,7 +36,7 @@ func fileError(path string, err error) error {
 	return fmt.Errorf("error parsing %s: %w", path, err)
 }
 
-func ParseSemanticVersion() (map[string]SemanticVersion, error) {
+var parseSemanticVersion = sync.OnceValues(func() (map[string]SemanticVersion, error) {
 	var v versions
 	b, err := files.ReadFile("src/versions.yaml")
 	if err != nil {
@@ -54,6 +55,10 @@ func ParseSemanticVersion() (map[string]SemanticVersion, error) {
 		versions[v.Url] = v
 	}
 	return versions, nil
+})
+
+func ParseSemanticVersion() (map[string]SemanticVersion, error) {
+	return parseSemanticVersion()
 }
 
 func ParseGroups(dir string) (map[string]Group, error) {
