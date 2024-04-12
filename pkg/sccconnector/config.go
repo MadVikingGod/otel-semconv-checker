@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
+	"go.opentelemetry.io/collector/component"
 )
 
 type Config struct {
@@ -39,4 +40,25 @@ func (c *Config) Validate() error {
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+func createDefaultConfig() component.Config {
+	return &Config{
+		Trace: []match.Match{
+			{
+				Match: "http.server.*",
+				Groups: []string{
+					"trace.http.server",
+				},
+				ReportAdditional: true,
+			},
+			{
+				Match: "http.client.*",
+				Groups: []string{
+					"trace.http.client",
+				},
+				ReportAdditional: true,
+			},
+		},
+	}
 }
