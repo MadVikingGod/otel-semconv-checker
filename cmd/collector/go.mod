@@ -294,4 +294,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/madvikinggod/otel-semconv-checker v0.0.14 => /home/aaron/projects/otel-semconv-checker
+replace github.com/madvikinggod/otel-semconv-checker v0.0.14 => ../..
