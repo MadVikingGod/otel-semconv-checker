@@ -11,8 +11,8 @@ import (
 )
 
 type Config struct {
-	Trace []match.Match `mapstructure:"trace"`
-	// Metrics         []match.Match
+	Trace   []match.Match `mapstructure:"trace"`
+	Metrics []match.Match `mapstructure:"metrics"`
 	// Log             []match.Match
 	ReportUnmatched bool `mapstructure:"report_unmatched"`
 }

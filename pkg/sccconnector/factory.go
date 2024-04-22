@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.uber.org/zap"
 )
@@ -29,11 +30,20 @@ func NewFactory() connector.Factory {
 	return connector.NewFactory(
 		component.MustNewType(typeStr),
 		createDefaultConfig,
-		connector.WithTracesToLogs(createTracesToLogsConnector, component.StabilityLevelAlpha))
+		connector.WithTracesToLogs(createTracesToLogsConnector, component.StabilityLevelAlpha),
+		connector.WithMetricsToLogs(createMetricToLogsConnector, component.StabilityLevelAlpha))
 }
 
 func createTracesToLogsConnector(ctx context.Context, params connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Traces, error) {
-	c, err := newTraceConnector(params, cfg)
+	c, err := newConnector(params, cfg)
+	if err != nil {
+		return nil, err
+	}
+	c.logsConsumer = nextConsumer
+	return c, nil
+}
+func createMetricToLogsConnector(ctx context.Context, params connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Metrics, error) {
+	c, err := newConnector(params, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -44,6 +54,7 @@ func createTracesToLogsConnector(ctx context.Context, params connector.CreateSet
 // schema for connector
 type connectorImp struct {
 	tracesMatch     *match.Traces
+	metricsMatch    *match.Metrics
 	logsConsumer    consumer.Logs
 	logger          *zap.Logger
 	reportUnmatched bool
@@ -55,16 +66,21 @@ type connectorImp struct {
 }
 
 // newConnector is a function to create a new connector
-func newTraceConnector(params connector.CreateSettings, config component.Config) (*connectorImp, error) {
+func newConnector(params connector.CreateSettings, config component.Config) (*connectorImp, error) {
 	params.Logger.Info("Building sccconnector connector")
 	cfg := config.(*Config)
 	tracesMatch, err := match.NewTraces(cfg.Trace)
 	if err != nil {
 		return nil, err
 	}
+	metricsMatch, err := match.NewMetrics(cfg.Metrics)
+	if err != nil {
+		return nil, err
+	}
 
 	return &connectorImp{
 		tracesMatch:     tracesMatch,
+		metricsMatch:    metricsMatch,
 		logger:          params.Logger,
 		resource:        params.Resource,
 		reportUnmatched: cfg.ReportUnmatched,
@@ -83,6 +99,14 @@ var notMatchedBody pcommon.Value = pcommon.NewValueStr("not matched")
 
 func (c *connectorImp) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	found, notFound := c.tracesMatch.Match(ctx, td)
+	return c.sendLogs(ctx, found, notFound)
+}
+func (c *connectorImp) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	found, notFound := c.metricsMatch.Match(ctx, md)
+	return c.sendLogs(ctx, found, notFound)
+}
+
+func (c *connectorImp) sendLogs(ctx context.Context, found, notFound []match.Response) error {
 	if len(found) == 0 && len(notFound) == 0 {
 		return nil
 	}

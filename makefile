@@ -17,6 +17,12 @@ clean:
 	@echo "Cleaning..."
 	@rm -rf ./dist ./.cache
 
+collector-generate: cmd/collector/main.go
+cmd/collector/main.go: cmd/collector/builder-config.yaml
+	cd cmd/collector; \
+	ocb --config builder-config.yaml --skip-compilation; \
+	go mod tidy
+
 test:
 	go test -timeout 60s ./...
 
