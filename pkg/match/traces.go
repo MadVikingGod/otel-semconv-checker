@@ -13,18 +13,23 @@ type Traces struct {
 	matches []matchDef
 }
 
-func NewTraces(cfg []Match, svs map[string]semconv.SemanticVersion) *Traces {
+func NewTraces(cfg []Match, opt ...Option) (*Traces, error) {
+	matchCfg, err := newConfig(opt...)
+	if err != nil {
+		return nil, err
+	}
+
 	matches := []matchDef{}
 	for _, match := range cfg {
-		groups, ok := svs[match.SemanticVersion]
+		groups, ok := matchCfg.SemanticVersions[match.SemanticVersion]
 		if !ok {
 			match.SemanticVersion = semconv.DefaultVersion
-			groups = svs[match.SemanticVersion]
+			groups = matchCfg.SemanticVersions[match.SemanticVersion]
 		}
 		matches = append(matches, newMatchDef(match, groups.Groups))
 	}
 
-	return &Traces{matches: matches}
+	return &Traces{matches: matches}, nil
 }
 
 func (t *Traces) Match(_ context.Context, traces ptrace.Traces) (found []Response, notFound []Response) {

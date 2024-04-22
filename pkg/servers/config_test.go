@@ -32,10 +32,11 @@ func TestDefaultConfig(t *testing.T) {
 
 	grpcServer := grpc.NewServer()
 
-	assert.NotPanics(t, func() {
-		RegisterTraceServer(grpcServer, cfg, nil)
-		RegisterMetricsServer(grpcServer, cfg, nil)
-	})
+	err = RegisterTraceServer(grpcServer, cfg)
+	require.NoError(t, err)
+	err = RegisterMetricsServer(grpcServer, cfg)
+	require.NoError(t, err)
+
 }
 
 func createKeyValues(attrs []attribute.KeyValue) []*common.KeyValue {

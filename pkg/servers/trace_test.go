@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
-	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
@@ -16,15 +15,15 @@ import (
 )
 
 func TestPTraceExport(t *testing.T) {
-	svs, err := semconv.ParseSemanticVersion()
+	m, err := match.NewTraces([]Match{
+		{
+			Match:   `.*`,
+			Include: []string{"test"},
+		},
+	})
 	require.NoError(t, err)
 	defaultServer := &trace{
-		trace: match.NewTraces([]Match{
-			{
-				Match:   `.*`,
-				Include: []string{"test"},
-			},
-		}, svs),
+		trace: m,
 	}
 
 	testCases := []struct {
@@ -66,12 +65,7 @@ func TestPTraceExport(t *testing.T) {
 				attribute.String("notTest", "test"),
 			},
 			server: &trace{
-				trace: match.NewTraces([]match.Match{
-					{
-						Match:   `.*`,
-						Include: []string{"test"},
-					},
-				}, svs),
+				trace:        m,
 				disableError: true,
 			},
 		},

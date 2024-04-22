@@ -1,0 +1,56 @@
+# Learn more about the OpenTelemetry Collector via
+# https://opentelemetry.io/docs/collector/
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+
+exporters:
+  otlp:
+    endpoint: otelcol:4317
+
+connectors:
+  scc:
+    trace:
+    - match: http.server.*
+      groups:
+      - trace.http.server
+      ignore:
+      -
+      report_additional: true
+    - match: http.client.*
+      groups:
+      - trace.http.client
+      ignore:
+      -
+      report_additional: true
+
+extensions:
+  health_check:
+  pprof:
+  zpages:
+
+service:
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp,scc]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp,scc]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp]
+    logs/2:
+      receivers: [scc]
+      processors: [batch]
+      exporters: [otlp]

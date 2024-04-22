@@ -7,7 +7,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -168,11 +167,11 @@ func TestTraces_Match(t *testing.T) {
 		},
 	}
 
-	svs, err := semconv.ParseSemanticVersion()
-	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tr := NewTraces(tt.config, svs)
+			tr, err := NewTraces(tt.config)
+			require.NoError(t, err)
+
 			req, err := golden.ReadTraces(path.Join("testdata", "trace", tt.reqFile))
 			require.NoError(t, err)
 
