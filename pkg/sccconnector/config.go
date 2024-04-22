@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 package sccconnector
 
 import (
@@ -9,7 +11,7 @@ import (
 )
 
 type Config struct {
-	Trace []match.Match
+	Trace []match.Match `mapstructure:"trace"`
 	// Metrics         []match.Match
 	// Log             []match.Match
 	ReportUnmatched bool `mapstructure:"report_unmatched"`

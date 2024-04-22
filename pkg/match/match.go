@@ -12,19 +12,19 @@ import (
 )
 
 type Match struct {
-	SemanticVersion string `mapstructure:"semantic_version"`
-	Match           string
+	SemanticVersion string      `mapstructure:"semantic_version"`
+	Match           string      `mapstructure:"match"`
 	MatchAttributes []Attribute `mapstructure:"match_attributes"`
 
-	Groups           []string
-	Ignore           []string
-	Include          []string
-	ReportAdditional bool `mapstructure:"report_additional"`
+	Groups           []string `mapstructure:"groups"`
+	Ignore           []string `mapstructure:"ignore"`
+	Include          []string `mapstructure:"include"`
+	ReportAdditional bool     `mapstructure:"report_additional"`
 }
 
 type Attribute struct {
-	Name  string
-	Value string
+	Name  string `mapstructure:"name"`
+	Value string `mapstructure:"value"`
 }
 
 type matchDef struct {

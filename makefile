@@ -29,7 +29,7 @@ test-e2e/go:
 
 # TODO: split this out for linting the server and the e2e tests.
 lint:
-	docker run -t --rm -v $$(pwd):/app -v ~/.cache/golangci-lint/v1.55.2:/root/.cache -w /app golangci/golangci-lint:v1.55.2 golangci-lint run -v
+	docker run -t --rm -v $$(pwd):/app -v ~/.cache/golangci-lint/v1.57.2:/root/.cache -w /app golangci/golangci-lint:v1.57.2 golangci-lint run -v
 
 license:
 	npx github:viperproject/check-license-header#v1 check --config .github/license-config.json

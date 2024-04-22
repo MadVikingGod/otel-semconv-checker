@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 package sccconnector
 
 import (
@@ -107,7 +109,7 @@ func testMultiTrace(attrs map[string]any) ptrace.Traces {
 	traces.ResourceSpans().EnsureCapacity(3)
 	// attributes in the Resrouce
 	rs := traces.ResourceSpans().AppendEmpty()
-	rs.Resource().Attributes().FromRaw(attrs)
+	_ = rs.Resource().Attributes().FromRaw(attrs)
 	scope := rs.ScopeSpans().AppendEmpty()
 	scope.Scope().SetName("resource Scope")
 	spans := scope.Spans().AppendEmpty()
@@ -116,7 +118,7 @@ func testMultiTrace(attrs map[string]any) ptrace.Traces {
 	rs = traces.ResourceSpans().AppendEmpty()
 	scope = rs.ScopeSpans().AppendEmpty()
 	scope.Scope().SetName("scope Scope")
-	scope.Scope().Attributes().FromRaw(attrs)
+	_ = scope.Scope().Attributes().FromRaw(attrs)
 	spans = scope.Spans().AppendEmpty()
 	spans.SetName("scope span")
 	// attributes in the Span
@@ -124,7 +126,7 @@ func testMultiTrace(attrs map[string]any) ptrace.Traces {
 	scope = rs.ScopeSpans().AppendEmpty()
 	spans = scope.Spans().AppendEmpty()
 	spans.SetName("span")
-	spans.Attributes().FromRaw(attrs)
+	_ = spans.Attributes().FromRaw(attrs)
 
 	return traces
 }
