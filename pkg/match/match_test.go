@@ -4,6 +4,7 @@ package match
 
 import (
 	"regexp"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -190,5 +191,12 @@ func Test_matchDef_isMatch(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.want, tt.match.isMatch(tt.args.name, m))
 		})
+	}
+}
+
+func testSortResps(resps []Response) {
+	for _, resp := range resps {
+		slices.Sort(resp.Attributes)
+		slices.Sort(resp.ExtraAttributes)
 	}
 }

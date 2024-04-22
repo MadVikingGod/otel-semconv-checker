@@ -34,7 +34,7 @@ func TestDefaultConfig(t *testing.T) {
 
 	assert.NotPanics(t, func() {
 		RegisterTraceServer(grpcServer, cfg, nil)
-		NewMetricsService(cfg, nil)
+		RegisterMetricsServer(grpcServer, cfg, nil)
 	})
 }
 

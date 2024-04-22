@@ -1,0 +1,39 @@
+resourceSpans:
+- resource:
+    attributes:
+      - key: "NotPeerService"
+        value: 
+          stringValue: "res"
+      - key: "service.name"
+        value: 
+          stringValue: "match peer"
+  scopeSpans:
+  - scope: {}
+    spans:
+    - name: "testResource"
+- resource: 
+    attributes:
+      - key: "service.name"
+        value: 
+          stringValue: "match peer"
+  scopeSpans:
+  - scope:
+      attributes:
+      - key: "NotPeerService"
+        value: 
+          stringValue: "res"
+    spans:
+    - name: "testScope"
+- resource: 
+    attributes:
+      - key: "service.name"
+        value: 
+          stringValue: "match peer"
+  scopeSpans:
+  - scope: {}
+    spans:
+    - name: "testSpan"
+      attributes:
+      - key: "NotPeerService"
+        value: 
+          stringValue: "res"

@@ -42,9 +42,9 @@ var _ ptraceotlp.GRPCServer = &trace{}
 func (t *trace) Export(_ context.Context, req ptraceotlp.ExportRequest) (ptraceotlp.ExportResponse, error) {
 	found, notFound := t.trace.Match(context.TODO(), req.Traces())
 
-	t.log("missing Attributes", found)
+	logResponse("missing Attributes", found)
 	if t.reportUnmatched {
-		t.log("not matched", notFound)
+		logResponse("not matched", notFound)
 	}
 
 	if len(found) > 0 && !t.disableError {
@@ -60,20 +60,4 @@ func (t *trace) Export(_ context.Context, req ptraceotlp.ExportRequest) (ptraceo
 	}
 
 	return ptraceotlp.NewExportResponse(), nil
-}
-
-func (t *trace) log(msg string, responses []match.Response) {
-	for _, resp := range responses {
-		logger.Info(msg,
-			"type", resp.Type,
-			"resource.schema", resp.ResourceSchema,
-			"service.name", resp.ServiceName,
-			"scope.name", resp.ScopeName,
-			"scope.version", resp.ScopeVersion,
-			"scope.schema", resp.ScopeURL,
-			"name", resp.Name,
-			"missing.attributes", resp.Attributes,
-			"extra.attributes", resp.ExtraAttributes,
-		)
-	}
 }

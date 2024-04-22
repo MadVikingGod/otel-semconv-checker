@@ -114,6 +114,7 @@ func TestPTraceExport(t *testing.T) {
 	}
 }
 
+// TODO convert to golden
 func newPdataRequest(t *testing.T, traceAttrs, scopeAttrs, resAttrs []attribute.KeyValue) ptraceotlp.ExportRequest {
 	tAttrs := testCreateMap(traceAttrs)
 	sAttrs := testCreateMap(scopeAttrs)

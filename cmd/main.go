@@ -13,7 +13,6 @@ import (
 	"github.com/madvikinggod/otel-semconv-checker/pkg/servers"
 	"github.com/spf13/viper"
 	pbLog "go.opentelemetry.io/proto/otlp/collector/logs/v1"
-	pbMetric "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
 )
@@ -51,9 +50,10 @@ func main() {
 	grpcServer := grpc.NewServer()
 
 	servers.RegisterTraceServer(grpcServer, cfg, svs)
+	servers.RegisterMetricsServer(grpcServer, cfg, svs)
 
 	// pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, svs))
-	pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, svs))
+	// pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, svs))
 	pbLog.RegisterLogsServiceServer(grpcServer, servers.NewLogService(cfg, svs))
 
 	slog.Info("starting server", "address", cfg.ServerAddress)
