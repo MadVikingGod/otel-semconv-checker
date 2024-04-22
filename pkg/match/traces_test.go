@@ -4,20 +4,20 @@ package match
 
 import (
 	"context"
-	"slices"
+	"path"
 	"testing"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 func TestTraces_Match(t *testing.T) {
 	tests := []struct {
 		name         string
 		config       []Match
-		req          testSpanReq
+		reqFile      string
 		wantFound    []Response
 		wantNotFound []Response
 	}{
@@ -29,9 +29,7 @@ func TestTraces_Match(t *testing.T) {
 					Groups: []string{"peer"}, // contains "peer.service"
 				},
 			},
-			req: testMultiReq("match peer", map[string]any{
-				"peer.service": "res",
-			}),
+			reqFile: "matches.yaml",
 		},
 		{
 			name: "Matches Nothing",
@@ -45,9 +43,7 @@ func TestTraces_Match(t *testing.T) {
 					Groups: []string{"peer"}, // contains "peer.service"
 				},
 			},
-			req: testMultiReq("match peer", map[string]any{
-				"peer.service": "res",
-			}),
+			reqFile: "matches.yaml",
 			wantNotFound: []Response{
 				{
 					Type:        "Trace",
@@ -67,16 +63,14 @@ func TestTraces_Match(t *testing.T) {
 			},
 		},
 		{
-			name: "Matches Nothing",
+			name: "Matches Some",
 			config: []Match{
 				{
 					Match:  `testResource`,
 					Groups: []string{"peer"}, // contains "peer.service"
 				},
 			},
-			req: testMultiReq("match peer", map[string]any{
-				"peer.service": "res",
-			}),
+			reqFile: "matches.yaml",
 			wantNotFound: []Response{
 				{
 					Type:        "Trace",
@@ -99,9 +93,7 @@ func TestTraces_Match(t *testing.T) {
 					ReportAdditional: true,
 				},
 			},
-			req: testMultiReq("match peer", map[string]any{
-				"NotPeerService": "res",
-			}),
+			reqFile: "missing.yaml",
 			wantFound: []Response{
 				{
 					Type:            "Trace",
@@ -138,9 +130,7 @@ func TestTraces_Match(t *testing.T) {
 					Groups: []string{"peer"}, // contains "peer.service"
 				},
 			},
-			req: testMultiReq("match peer", map[string]any{
-				"peer.service": "res",
-			}),
+			reqFile: "matches.yaml",
 		},
 		{
 			name: "Matches Multiple",
@@ -154,9 +144,7 @@ func TestTraces_Match(t *testing.T) {
 					Groups: []string{"attributes.user_agent"}, // contains "user_agent.original"
 				},
 			},
-			req: testMultiReq("match peer", map[string]any{
-				"peer.service": "res",
-			}),
+			reqFile: "matches.yaml",
 			wantFound: []Response{
 				{
 					Type:        "Trace",
@@ -185,126 +173,17 @@ func TestTraces_Match(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tr := NewTraces(tt.config, svs)
-			gotFound, gotNotFound := tr.Match(context.TODO(), tt.req.Req(t))
+			req, err := golden.ReadTraces(path.Join("testdata", "trace", tt.reqFile))
+			require.NoError(t, err)
+
+			gotFound, gotNotFound := tr.Match(context.TODO(), req)
 			// Sort slice fields.  [Extra]Attributes are populated by a map and can be in random order.
 			testSortResps(tt.wantFound)
 			testSortResps(gotFound)
-			assert.ElementsMatch(t, tt.wantFound, gotFound)
+			assert.ElementsMatch(t, tt.wantFound, gotFound, "Founds do not match")
 			testSortResps(tt.wantNotFound)
 			testSortResps(gotNotFound)
-			assert.ElementsMatch(t, tt.wantNotFound, gotNotFound)
+			assert.ElementsMatch(t, tt.wantNotFound, gotNotFound, "NotFounds do not match")
 		})
 	}
-}
-
-func testSortResps(resps []Response) {
-	for _, resp := range resps {
-		slices.Sort(resp.Attributes)
-		slices.Sort(resp.ExtraAttributes)
-	}
-}
-
-type testSpanReq struct {
-	resSpans []testResSpans
-}
-
-type testResSpans struct {
-	serviceName  string
-	resourceAttr map[string]any
-	scopes       []testScopeSpans
-}
-
-type testScopeSpans struct {
-	scopeName  string
-	scopeAttrs map[string]any
-	traces     []testSpans
-}
-type testSpans struct {
-	name  string
-	attrs map[string]any
-}
-
-func (t testSpanReq) Req(tt *testing.T) ptrace.Traces {
-	tt.Helper()
-	trace := ptrace.NewTraces()
-	for i, tRes := range t.resSpans {
-		trace.ResourceSpans().AppendEmpty()
-		rs := trace.ResourceSpans().At(i)
-
-		res := rs.Resource()
-		if tRes.resourceAttr == nil {
-			tRes.resourceAttr = map[string]any{}
-		}
-		tRes.resourceAttr["service.name"] = tRes.serviceName
-		err := res.Attributes().FromRaw(tRes.resourceAttr)
-		assert.NoError(tt, err)
-
-		scopes := rs.ScopeSpans()
-
-		for j, tscp := range tRes.scopes {
-			scopes.AppendEmpty()
-			scp := scopes.At(j)
-			scp.Scope().SetName(tscp.scopeName)
-			err = scp.Scope().Attributes().FromRaw(tscp.scopeAttrs)
-			assert.NoError(tt, err)
-
-			spans := scp.Spans()
-			for k, tTrace := range tscp.traces {
-				spans.AppendEmpty()
-				span := spans.At(k)
-				span.SetName(tTrace.name)
-				err = span.Attributes().FromRaw(tTrace.attrs)
-				assert.NoError(tt, err)
-			}
-		}
-	}
-
-	return trace
-}
-
-func testMultiReq(name string, attrs map[string]any) testSpanReq {
-	return testSpanReq{
-		resSpans: []testResSpans{
-			{
-				serviceName:  name,
-				resourceAttr: attrs,
-				scopes: []testScopeSpans{
-					{
-						traces: []testSpans{
-							{
-								name: "testResource",
-							},
-						},
-					},
-				},
-			},
-			{
-				serviceName: name,
-				scopes: []testScopeSpans{
-					{
-						scopeAttrs: attrs,
-						traces: []testSpans{
-							{
-								name: "testScope",
-							},
-						},
-					},
-				},
-			},
-			{
-				serviceName: name,
-				scopes: []testScopeSpans{
-					{
-						traces: []testSpans{
-							{
-								name:  "testSpan",
-								attrs: attrs,
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
 }

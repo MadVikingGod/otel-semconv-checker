@@ -46,3 +46,19 @@ disable_error: false
 `
 
 var logger *slog.Logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+func logResponse(msg string, responses []match.Response) {
+	for _, resp := range responses {
+		logger.Info(msg,
+			"type", resp.Type,
+			"resource.schema", resp.ResourceSchema,
+			"service.name", resp.ServiceName,
+			"scope.name", resp.ScopeName,
+			"scope.version", resp.ScopeVersion,
+			"scope.schema", resp.ScopeURL,
+			"name", resp.Name,
+			"missing.attributes", resp.Attributes,
+			"extra.attributes", resp.ExtraAttributes,
+		)
+	}
+}

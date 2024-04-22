@@ -1,0 +1,50 @@
+resourceMetrics:
+- resource:
+    attributes:
+    - key: "peer.service"
+      value: 
+        stringValue: "res"
+    - key: "service.name"
+      value: 
+        stringValue: "match peer"
+  scopeMetrics:
+  - scope: {}
+    metrics:
+    - name: "testResource"
+      sum:
+        dataPoints:
+        - asInt: "1"
+          attributes: []
+- resource:
+    attributes:
+    - key: "service.name"
+      value: 
+        stringValue: "match peer"
+  scopeMetrics:
+  - scope: 
+      attributes:
+      - key: "peer.service"
+        value: 
+          stringValue: "res"
+    metrics:
+    - name: "testScope"
+      sum:
+        dataPoints:
+        - asInt: 1
+          attributes: []
+- resource:
+    attributes:
+    - key: "service.name"
+      value: 
+        stringValue: "match peer"
+  scopeMetrics:
+  - scope: {}
+    metrics:
+    - name: "testMetric"
+      sum:
+        dataPoints:
+        - asInt: 1
+          attributes:
+          - key: "peer.service"
+            value: 
+              stringValue: "res"
