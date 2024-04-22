@@ -54,7 +54,7 @@ func main() {
 		slog.Error("failed to register trace server", "error", err)
 		return
 	}
-	servers.RegisterMetricsServer(grpcServer, cfg)
+	err = servers.RegisterMetricsServer(grpcServer, cfg)
 	if err != nil {
 		slog.Error("failed to register metrics server", "error", err)
 		return

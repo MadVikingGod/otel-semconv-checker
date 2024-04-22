@@ -20,7 +20,7 @@ clean:
 test:
 	go test -timeout 60s ./...
 
-test-collector
+test-collector:
 	cd cmd/collector; \
 	go test -timeout 60s -v ./...
 
