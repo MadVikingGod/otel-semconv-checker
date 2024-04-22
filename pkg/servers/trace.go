@@ -7,15 +7,17 @@ import (
 	"fmt"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
-	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func RegisterTraceServer(g *grpc.Server, cfg Config, svs map[string]semconv.SemanticVersion) {
-	traceMatch := match.NewTraces(cfg.Trace, svs)
+func RegisterTraceServer(g *grpc.Server, cfg Config) error {
+	traceMatch, err := match.NewTraces(cfg.Trace)
+	if err != nil {
+		return err
+	}
 
 	ptraceotlp.RegisterGRPCServer(g, &trace{
 
@@ -23,6 +25,7 @@ func RegisterTraceServer(g *grpc.Server, cfg Config, svs map[string]semconv.Sema
 		reportUnmatched: cfg.ReportUnmatched,
 		disableError:    cfg.DisableError,
 	})
+	return nil
 }
 
 // t *trace ptraceotlp.GRPCServer

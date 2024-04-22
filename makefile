@@ -20,6 +20,10 @@ clean:
 test:
 	go test -timeout 60s ./...
 
+test-collector
+	cd cmd/collector; \
+	go test -timeout 60s -v ./...
+
 # TODO: make the Prerequisites every directory under test/ when this get bigger than 3.
 test-e2e: test-e2e/go
 

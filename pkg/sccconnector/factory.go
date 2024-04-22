@@ -6,7 +6,6 @@ import (
 	"context"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
-	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/consumer"
@@ -59,11 +58,10 @@ type connectorImp struct {
 func newTraceConnector(params connector.CreateSettings, config component.Config) (*connectorImp, error) {
 	params.Logger.Info("Building sccconnector connector")
 	cfg := config.(*Config)
-	svs, err := semconv.ParseSemanticVersion()
+	tracesMatch, err := match.NewTraces(cfg.Trace)
 	if err != nil {
 		return nil, err
 	}
-	tracesMatch := match.NewTraces(cfg.Trace, svs)
 
 	return &connectorImp{
 		tracesMatch:     tracesMatch,

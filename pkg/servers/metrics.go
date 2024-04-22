@@ -7,21 +7,24 @@ import (
 	"fmt"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
-	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	"go.opentelemetry.io/collector/pdata/pmetric/pmetricotlp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func RegisterMetricsServer(g *grpc.Server, cfg Config, svs map[string]semconv.SemanticVersion) {
-	metricMatch := match.NewMetrics(cfg.Metrics, svs)
+func RegisterMetricsServer(g *grpc.Server, cfg Config) error {
+	metricMatch, err := match.NewMetrics(cfg.Metrics)
+	if err != nil {
+		return err
+	}
 
 	pmetricotlp.RegisterGRPCServer(g, &metric{
 		metric:          metricMatch,
 		reportUnmatched: cfg.ReportUnmatched,
 		disableError:    cfg.DisableError,
 	})
+	return nil
 }
 
 type metric struct {

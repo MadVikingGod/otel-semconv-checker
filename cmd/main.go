@@ -49,11 +49,17 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	servers.RegisterTraceServer(grpcServer, cfg, svs)
-	servers.RegisterMetricsServer(grpcServer, cfg, svs)
+	err = servers.RegisterTraceServer(grpcServer, cfg)
+	if err != nil {
+		slog.Error("failed to register trace server", "error", err)
+		return
+	}
+	servers.RegisterMetricsServer(grpcServer, cfg)
+	if err != nil {
+		slog.Error("failed to register metrics server", "error", err)
+		return
+	}
 
-	// pbTrace.RegisterTraceServiceServer(grpcServer, servers.NewTraceService(cfg, svs))
-	// pbMetric.RegisterMetricsServiceServer(grpcServer, servers.NewMetricsService(cfg, svs))
 	pbLog.RegisterLogsServiceServer(grpcServer, servers.NewLogService(cfg, svs))
 
 	slog.Info("starting server", "address", cfg.ServerAddress)

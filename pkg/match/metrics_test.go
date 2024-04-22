@@ -7,7 +7,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -168,14 +167,13 @@ func TestMetrics_Match(t *testing.T) {
 		},
 	}
 
-	svs, err := semconv.ParseSemanticVersion()
-	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, err := golden.ReadMetrics(path.Join("testdata", "metrics", tt.reqFile))
 			require.NoError(t, err)
 
-			m := NewMetrics(tt.config, svs)
+			m, err := NewMetrics(tt.config)
+			require.NoError(t, err)
 			gotFound, gotNotFound := m.Match(context.Background(), req)
 			// Sort slice fields.  [Extra]Attributes are populated by a map and can be in random order.
 

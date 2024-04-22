@@ -14,18 +14,22 @@ type Metrics struct {
 	matches []matchDef
 }
 
-func NewMetrics(cfg []Match, svs map[string]semconv.SemanticVersion) *Metrics {
+func NewMetrics(cfg []Match, opt ...Option) (*Metrics, error) {
+	matchCfg, err := newConfig(opt...)
+	if err != nil {
+		return nil, err
+	}
 	matches := []matchDef{}
 	for _, match := range cfg {
-		groups, ok := svs[match.SemanticVersion]
+		groups, ok := matchCfg.SemanticVersions[match.SemanticVersion]
 		if !ok {
 			match.SemanticVersion = semconv.DefaultVersion
-			groups = svs[match.SemanticVersion]
+			groups = matchCfg.SemanticVersions[match.SemanticVersion]
 		}
 		matches = append(matches, newMatchDef(match, groups.Groups))
 	}
 
-	return &Metrics{matches: matches}
+	return &Metrics{matches: matches}, nil
 }
 
 func (m *Metrics) Match(_ context.Context, metrics pmetric.Metrics) (found []Response, notFound []Response) {
