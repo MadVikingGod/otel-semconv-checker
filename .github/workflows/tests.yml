@@ -15,7 +15,7 @@ jobs:
           go-version-file: go.work
       - name: Run Go tests
         run: go test -v ./...
-  go-collector- test:
+  go-collector-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
