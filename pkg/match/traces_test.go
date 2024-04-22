@@ -10,7 +10,7 @@ import (
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 func TestTraces_Match(t *testing.T) {
@@ -224,10 +224,9 @@ type testSpans struct {
 	attrs map[string]any
 }
 
-func (t testSpanReq) Req(tt *testing.T) ptraceotlp.ExportRequest {
+func (t testSpanReq) Req(tt *testing.T) ptrace.Traces {
 	tt.Helper()
-	req := ptraceotlp.NewExportRequest()
-	trace := req.Traces()
+	trace := ptrace.NewTraces()
 	for i, tRes := range t.resSpans {
 		trace.ResourceSpans().AppendEmpty()
 		rs := trace.ResourceSpans().At(i)
@@ -260,7 +259,7 @@ func (t testSpanReq) Req(tt *testing.T) ptraceotlp.ExportRequest {
 		}
 	}
 
-	return req
+	return trace
 }
 
 func testMultiReq(name string, attrs map[string]any) testSpanReq {

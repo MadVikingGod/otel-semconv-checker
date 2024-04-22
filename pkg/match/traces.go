@@ -6,7 +6,7 @@ import (
 	"context"
 
 	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
-	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 type Traces struct {
@@ -27,8 +27,7 @@ func NewTraces(cfg []Match, svs map[string]semconv.SemanticVersion) *Traces {
 	return &Traces{matches: matches}
 }
 
-func (t *Traces) Match(_ context.Context, req ptraceotlp.ExportRequest) (found []Response, notFound []Response) {
-	traces := req.Traces()
+func (t *Traces) Match(_ context.Context, traces ptrace.Traces) (found []Response, notFound []Response) {
 	rs := traces.ResourceSpans()
 	for i := 0; i < rs.Len(); i++ {
 		resp := Response{

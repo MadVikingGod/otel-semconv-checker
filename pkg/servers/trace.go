@@ -40,7 +40,7 @@ var _ ptraceotlp.GRPCServer = &trace{}
 // For performance reasons, it is recommended to keep this RPC
 // alive for the entire life of the application.
 func (t *trace) Export(_ context.Context, req ptraceotlp.ExportRequest) (ptraceotlp.ExportResponse, error) {
-	found, notFound := t.trace.Match(context.TODO(), req)
+	found, notFound := t.trace.Match(context.TODO(), req.Traces())
 
 	t.log("missing Attributes", found)
 	if t.reportUnmatched {

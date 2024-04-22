@@ -6,7 +6,8 @@
             "test/**/*.go"
         ],
         "exclude": [
-            "pkg/semconv/src/**"
+            "pkg/semconv/src/**",
+            "cmd/collector/*.go"
         ],
         "license": "./.github/license-check/header-apache2.0.txt"
     },
