@@ -98,19 +98,19 @@ dockers:
     - "--label=org.opencontainers.image.version={{.Version}}"
     extra_files:
       - cmd/collector/config.yaml
-  # - image_templates:
-  #   - "ghcr.io/madvikinggod/otel-collector-scc:{{ .Version }}-arm64v8"
-  #   use: buildx
-  #   goarch: arm64
-  #   dockerfile: cmd/collector/Dockerfile
-  #   build_flag_templates:
-  #   - "--platform=linux/arm64/v8"
-  #   - "--label=org.opencontainers.image.created={{.Date}}"
-  #   - "--label=org.opencontainers.image.title={{.ProjectName}}"
-  #   - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-  #   - "--label=org.opencontainers.image.version={{.Version}}"
-  #   extra_files:
-  #     - cmd/collector/config.yaml
+  - image_templates:
+    - "ghcr.io/madvikinggod/otel-collector-scc:{{ .Version }}-arm64v8"
+    use: buildx
+    goarch: arm64
+    dockerfile: cmd/collector/Dockerfile
+    build_flag_templates:
+    - "--platform=linux/arm64/v8"
+    - "--label=org.opencontainers.image.created={{.Date}}"
+    - "--label=org.opencontainers.image.title={{.ProjectName}}"
+    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+    - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - cmd/collector/config.yaml
 docker_manifests:
   - name_template: "ghcr.io/madvikinggod/semantic-convention-checker:{{ .Version }}"
     image_templates:
@@ -123,8 +123,8 @@ docker_manifests:
   - name_template: "ghcr.io/madvikinggod/otel-collector-scc:{{ .Version }}"
     image_templates:
     - "ghcr.io/madvikinggod/otel-collector-scc:{{ .Version }}-amd64"
-    # - "ghcr.io/madvikinggod/otel-collector-scc:{{ .Version }}-arm64v8"
+    - "ghcr.io/madvikinggod/otel-collector-scc:{{ .Version }}-arm64v8"
   - name_template: "ghcr.io/madvikinggod/otel-collector-scc:latest"
     image_templates:
     - "ghcr.io/madvikinggod/otel-collector-scc:{{ .Version }}-amd64"
-    # - "ghcr.io/madvikinggod/otel-collector-scc:{{ .Version }}-arm64v8"
+    - "ghcr.io/madvikinggod/otel-collector-scc:{{ .Version }}-arm64v8"
