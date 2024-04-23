@@ -14,10 +14,15 @@ func main() {
 	info := component.BuildInfo{
 		Command:     "otelcol-scc",
 		Description: "OpenTelemetry Collector with Semantic Convention Checker",
-		Version:     "0.0.14",
+		Version:     "0.0.16",
 	}
 
-	if err := run(otelcol.CollectorSettings{BuildInfo: info, Factories: components}); err != nil {
+	set := otelcol.CollectorSettings{
+		BuildInfo: info,
+		Factories: components,
+	}
+
+	if err := run(set); err != nil {
 		log.Fatal(err)
 	}
 }
