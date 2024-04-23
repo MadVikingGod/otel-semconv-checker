@@ -5,131 +5,59 @@ package servers
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
-	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
-	pbCollectorLogs "go.opentelemetry.io/proto/otlp/collector/logs/v1"
+	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
+	"go.opentelemetry.io/collector/pdata/plog/plogotlp"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type LogServer struct {
-	pbCollectorLogs.UnimplementedLogsServiceServer
-	resource        matchDef
-	matches         []matchDef
-	reportUnmatched bool
-
-	disableError bool
-}
-
-var _ pbCollectorLogs.LogsServiceServer = &LogServer{}
-
-func NewLogService(cfg Config, svs map[string]semconv.SemanticVersion) *LogServer {
-	_, found := svs[cfg.Resource.SemanticVersion]
-	if cfg.Resource.SemanticVersion != "" && !found {
-		cfg.Resource.SemanticVersion = semconv.DefaultVersion
+func RegisterLogServer(g *grpc.Server, cfg Config) error {
+	logMatch, err := match.NewLogs(cfg.Log)
+	if err != nil {
+		return err
 	}
 
-	resSemVer := cfg.Resource.SemanticVersion
-	if !found {
-		resSemVer = semconv.DefaultVersion
-	}
-	resource := newMatchDef(cfg.Resource, svs[resSemVer].Groups)
+	plogotlp.RegisterGRPCServer(g, &log{
 
-	matches := []matchDef{}
-	for _, match := range cfg.Log {
-		groups, ok := svs[match.SemanticVersion]
-		if !ok {
-			match.SemanticVersion = semconv.DefaultVersion
-			groups = svs[match.SemanticVersion]
-		}
-		matches = append(matches, newMatchDef(match, groups.Groups))
-	}
-
-	return &LogServer{
-		resource:        resource,
-		matches:         matches,
+		log:             logMatch,
 		reportUnmatched: cfg.ReportUnmatched,
 		disableError:    cfg.DisableError,
-	}
+	})
+	return nil
 }
 
-func (s *LogServer) Export(ctx context.Context, req *pbCollectorLogs.ExportLogsServiceRequest) (*pbCollectorLogs.ExportLogsServiceResponse, error) {
-	if req == nil {
-		return nil, nil
-	}
-	count := 0
-	names := []string{}
-	for _, r := range req.ResourceLogs {
-		log := slog.With("type", "log")
-		if schema := r.GetSchemaUrl(); schema != "" {
-			log = log.With("resource.schema", schema)
-		}
-		if attr := r.Resource.GetAttributes(); len(attr) > 0 {
-			name := ""
-			for _, kv := range attr {
-				if kv.Key == "service.name" {
-					name = kv.Value.GetStringValue()
-				}
-				if name == "" {
-					name = kv.String()
-				}
-			}
-			if name != "" {
-				log = log.With("service.name", name)
-			}
-		}
+type log struct {
+	plogotlp.UnimplementedGRPCServer
 
-		for _, scope := range r.ScopeLogs {
-			log := log.With(slog.String("section", "logs"))
+	log             *match.Logs
+	reportUnmatched bool
+	disableError    bool
+}
 
-			if scope := scope.GetScope(); scope != nil {
-				if name := scope.GetName(); name != "" {
-					log = log.With(slog.String("scope.name", name))
-				}
-				if version := scope.GetVersion(); version != "" {
-					log = log.With(slog.String("scope.version", version))
-				}
-			}
-			if url := scope.GetSchemaUrl(); url != "" {
-				log = log.With(slog.String("scope.schema", url))
-			}
+var _ plogotlp.GRPCServer = &log{}
 
-			for _, record := range scope.LogRecords {
-				found := false
-				name := record.GetBody().String()
-				if len(name) > 100 {
-					name = name[:100]
-				}
-				log := log.With(slog.String("name", name))
-				for _, match := range s.matches {
-					if !match.isMatch(record.GetBody().String(), record.GetAttributes()) {
-						continue
-					}
+func (t *log) Export(_ context.Context, req plogotlp.ExportRequest) (plogotlp.ExportResponse, error) {
+	found, notFound := t.log.Match(context.TODO(), req.Logs())
 
-					missing := match.compareAttributes(log, record.GetAttributes(), scope.GetScope().GetAttributes(), r.GetResource().GetAttributes())
-					found = true
-					count += missing
-					if missing > 0 {
-						names = append(names, fmt.Sprintf("%s/%s", scope.Scope.GetName(), name))
-					}
-				}
-				if !found && s.reportUnmatched {
-					log.Info("unmatched log")
-				}
-			}
-		}
+	logResponse("missing Attributes", found)
+	if t.reportUnmatched {
+		logResponse("not matched", notFound)
 	}
 
-	if count > 0 && !s.disableError {
-		return &pbCollectorLogs.ExportLogsServiceResponse{
-			PartialSuccess: &pbCollectorLogs.ExportLogsPartialSuccess{
-				RejectedLogRecords: int64(count),
-				ErrorMessage:       "missing attributes",
-			},
-		}, status.Error(codes.FailedPrecondition, fmt.Sprintf("missing attributes: %v", names))
+	if len(found) > 0 && !t.disableError {
+		resp := plogotlp.NewExportResponse()
+		resp.PartialSuccess().SetRejectedLogRecords(int64(len(found)))
+		resp.PartialSuccess().SetErrorMessage("missing attributes")
+		names := make([]string, 0, len(found))
+		for _, r := range found {
+			names = append(names, r.GetScopeName())
+		}
+		return resp, status.Error(codes.FailedPrecondition, fmt.Sprintf("missing attributes: %v", names))
+
 	}
 
-	return &pbCollectorLogs.ExportLogsServiceResponse{}, nil
+	return plogotlp.NewExportResponse(), nil
 }

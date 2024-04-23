@@ -49,7 +49,7 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp]
+      exporters: [otlp,scc]
     logs/2:
       receivers: [scc]
       processors: [batch]

@@ -9,10 +9,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/madvikinggod/otel-semconv-checker/pkg/semconv"
 	"github.com/madvikinggod/otel-semconv-checker/pkg/servers"
 	"github.com/spf13/viper"
-	pbLog "go.opentelemetry.io/proto/otlp/collector/logs/v1"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
 )
@@ -21,12 +19,6 @@ var config = flag.String("cfg", "config.yaml", "The config file to use.")
 
 func main() {
 	flag.Parse()
-
-	svs, err := semconv.ParseSemanticVersion()
-	if err != nil {
-		slog.Error("failed to parse groups", "error", err)
-		return
-	}
 
 	cfg := servers.Config{}
 
@@ -59,8 +51,11 @@ func main() {
 		slog.Error("failed to register metrics server", "error", err)
 		return
 	}
-
-	pbLog.RegisterLogsServiceServer(grpcServer, servers.NewLogService(cfg, svs))
+	err = servers.RegisterLogServer(grpcServer, cfg)
+	if err != nil {
+		slog.Error("failed to register log server", "error", err)
+		return
+	}
 
 	slog.Info("starting server", "address", cfg.ServerAddress)
 	if err := grpcServer.Serve(lis); err != nil {

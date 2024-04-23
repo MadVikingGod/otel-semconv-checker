@@ -9,8 +9,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/attribute"
-	common "go.opentelemetry.io/proto/otlp/common/v1"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 )
@@ -37,22 +35,4 @@ func TestDefaultConfig(t *testing.T) {
 	err = RegisterMetricsServer(grpcServer, cfg)
 	require.NoError(t, err)
 
-}
-
-func createKeyValues(attrs []attribute.KeyValue) []*common.KeyValue {
-	keyValues := make([]*common.KeyValue, len(attrs))
-	for i, attr := range attrs {
-		keyValues[i] = &common.KeyValue{
-			Key:   string(attr.Key),
-			Value: createValue(attr.Value.Emit()),
-		}
-	}
-	if len(keyValues) == 0 {
-		keyValues = nil
-	}
-	return keyValues
-}
-
-func createValue(value string) *common.AnyValue {
-	return &common.AnyValue{Value: &common.AnyValue_StringValue{StringValue: value}}
 }
