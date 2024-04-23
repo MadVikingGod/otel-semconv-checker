@@ -1,0 +1,42 @@
+resourceLogs:
+- resource:
+    attributes:
+      - key: "NotPeerService"
+        value: 
+          stringValue: "res"
+      - key: "service.name"
+        value: 
+          stringValue: "match peer"
+  scopeLogs:
+  - scope: {}
+    logRecords:
+    - body:
+        stringValue: "testResource"
+- resource: 
+    attributes:
+      - key: "service.name"
+        value: 
+          stringValue: "match peer"
+  scopeLogs:
+  - scope:
+      attributes:
+      - key: "NotPeerService"
+        value: 
+          stringValue: "res"
+    logRecords:
+    - body:
+        stringValue: "testScope"
+- resource: 
+    attributes:
+      - key: "service.name"
+        value: 
+          stringValue: "match peer"
+  scopeLogs:
+  - scope: {}
+    logRecords:
+    - body:
+        stringValue: "testLog"
+      attributes:
+      - key: "NotPeerService"
+        value: 
+          stringValue: "res"

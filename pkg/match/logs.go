@@ -36,7 +36,7 @@ func (t *Logs) Match(_ context.Context, logs plog.Logs) (found []Response, notFo
 	rs := logs.ResourceLogs()
 	for i := 0; i < rs.Len(); i++ {
 		resp := Response{
-			Type: "Trace",
+			Type: "Log",
 		}
 		r := rs.At(i)
 		if schema := r.SchemaUrl(); schema != "" {
