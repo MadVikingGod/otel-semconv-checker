@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := build
 
-.PHONY: build clean test lint test-e2e release default license precommit go-fmt
+.PHONY: build clean test lint test-e2e release default license precommit go-fmt collector-builder collector-generate test-collector
 default: build
 
 release: clean test lint
@@ -16,11 +16,19 @@ build: test lint
 clean:
 	@echo "Cleaning..."
 	@rm -rf ./dist ./.cache
+	@rm -rf ./internal/tools/bin
+
+OCB := internal/tools/bin/ocb
+collector-builder: $(OCB)
+$(OCB): internal/tools/go.mod
+	cd internal/tools; \
+	mkdir -p bin && true; \
+	go build -o bin/ocb go.opentelemetry.io/collector/cmd/builder;
 
 collector-generate: cmd/collector/main.go
-cmd/collector/main.go: cmd/collector/builder-config.yaml
+cmd/collector/main.go: cmd/collector/builder-config.yaml $(OCB)
 	cd cmd/collector; \
-	ocb --config builder-config.yaml --skip-compilation; \
+	../../$(OCB) --config builder-config.yaml --skip-compilation; \
 	go mod tidy
 
 test:
