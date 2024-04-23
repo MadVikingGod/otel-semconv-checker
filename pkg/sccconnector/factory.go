@@ -31,7 +31,8 @@ func NewFactory() connector.Factory {
 		component.MustNewType(typeStr),
 		createDefaultConfig,
 		connector.WithTracesToLogs(createTracesToLogsConnector, component.StabilityLevelAlpha),
-		connector.WithMetricsToLogs(createMetricToLogsConnector, component.StabilityLevelAlpha))
+		connector.WithMetricsToLogs(createMetricToLogsConnector, component.StabilityLevelAlpha),
+		connector.WithLogsToLogs(createLogsToLogsConnector, component.StabilityLevelAlpha))
 }
 
 func createTracesToLogsConnector(ctx context.Context, params connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Traces, error) {
@@ -50,11 +51,21 @@ func createMetricToLogsConnector(ctx context.Context, params connector.CreateSet
 	c.logsConsumer = nextConsumer
 	return c, nil
 }
+func createLogsToLogsConnector(ctx context.Context, params connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Logs, error) {
+	c, err := newConnector(params, cfg)
+	if err != nil {
+		return nil, err
+	}
+	c.logsConsumer = nextConsumer
+	return c, nil
+}
 
 // schema for connector
 type connectorImp struct {
-	tracesMatch     *match.Traces
-	metricsMatch    *match.Metrics
+	tracesMatch  *match.Traces
+	metricsMatch *match.Metrics
+	logsMatch    *match.Logs
+
 	logsConsumer    consumer.Logs
 	logger          *zap.Logger
 	reportUnmatched bool
@@ -77,10 +88,15 @@ func newConnector(params connector.CreateSettings, config component.Config) (*co
 	if err != nil {
 		return nil, err
 	}
+	logsMatch, err := match.NewLogs(cfg.Log)
+	if err != nil {
+		return nil, err
+	}
 
 	return &connectorImp{
 		tracesMatch:     tracesMatch,
 		metricsMatch:    metricsMatch,
+		logsMatch:       logsMatch,
 		logger:          params.Logger,
 		resource:        params.Resource,
 		reportUnmatched: cfg.ReportUnmatched,
@@ -103,6 +119,10 @@ func (c *connectorImp) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 }
 func (c *connectorImp) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	found, notFound := c.metricsMatch.Match(ctx, md)
+	return c.sendLogs(ctx, found, notFound)
+}
+func (c *connectorImp) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+	found, notFound := c.logsMatch.Match(ctx, ld)
 	return c.sendLogs(ctx, found, notFound)
 }
 

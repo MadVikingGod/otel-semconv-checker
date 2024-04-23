@@ -7,23 +7,32 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/madvikinggod/otel-semconv-checker/pkg/match"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/plog/plogotlp"
 	"go.opentelemetry.io/otel/attribute"
-	pbCollectorLogs "go.opentelemetry.io/proto/otlp/collector/logs/v1"
-	common "go.opentelemetry.io/proto/otlp/common/v1"
-	logs "go.opentelemetry.io/proto/otlp/logs/v1"
-	resource "go.opentelemetry.io/proto/otlp/resource/v1"
 )
 
 func TestLogsServerExport(t *testing.T) {
-	defaultServer := &LogServer{
-		matches: []matchDef{newTestMatchDef([]string{"test"}, nil)},
+
+	m, err := match.NewLogs([]Match{
+		{
+			Match:   `.*`,
+			Include: []string{"test"},
+		},
+	})
+	require.NoError(t, err)
+	defaultServer := &log{
+		log: m,
 	}
+
 	testCases := []struct {
 		name       string
 		traceAttrs []attribute.KeyValue
 		scopeAttrs []attribute.KeyValue
 		resAttrs   []attribute.KeyValue
-		server     *LogServer
+		server     *log
 		hasError   bool
 	}{
 		{
@@ -56,8 +65,8 @@ func TestLogsServerExport(t *testing.T) {
 			traceAttrs: []attribute.KeyValue{
 				attribute.String("notTest", "test"),
 			},
-			server: &LogServer{
-				matches:      []matchDef{newTestMatchDef([]string{"test"}, nil)},
+			server: &log{
+				log:          m,
 				disableError: true,
 			},
 		},
@@ -81,7 +90,7 @@ func TestLogsServerExport(t *testing.T) {
 			if tc.server != nil {
 				ts = tc.server
 			}
-			req := newLogsRequest(tc.traceAttrs, tc.scopeAttrs, tc.resAttrs)
+			req := newPdataLogsRequest(t, tc.traceAttrs, tc.scopeAttrs, tc.resAttrs)
 			_, err := ts.Export(context.Background(), req)
 			if tc.hasError {
 				if err == nil {
@@ -100,36 +109,32 @@ func TestLogsServerExport(t *testing.T) {
 	}
 }
 
-func newLogsRequest(logsAttrs, scopeAttrs, resAttrs []attribute.KeyValue) *pbCollectorLogs.ExportLogsServiceRequest {
-	tAttrs := createKeyValues(logsAttrs)
-	sAttrs := createKeyValues(scopeAttrs)
-	rAttrs := createKeyValues(resAttrs)
+func newPdataLogsRequest(t *testing.T, traceAttrs, scopeAttrs, resAttrs []attribute.KeyValue) plogotlp.ExportRequest {
+	tAttrs := testCreateMap(traceAttrs)
+	sAttrs := testCreateMap(scopeAttrs)
+	rAttrs := testCreateMap(resAttrs)
 
-	res := &resource.Resource{
-		Attributes: rAttrs,
+	req := plogotlp.NewExportRequest()
+	req.Logs().ResourceLogs().AppendEmpty()
+	rl := req.Logs().ResourceLogs().At(0)
+	if len(resAttrs) != 0 {
+		err := rl.Resource().Attributes().FromRaw(rAttrs)
+		assert.NoError(t, err)
 	}
-	if len(resAttrs) == 0 {
-		res = nil
+	rl.ScopeLogs().AppendEmpty()
+	sl := rl.ScopeLogs().At(0)
+	sl.Scope().SetName("TestScope")
+	if len(sAttrs) != 0 {
+		err := sl.Scope().Attributes().FromRaw(sAttrs)
+		assert.NoError(t, err)
+	}
+	sl.LogRecords().AppendEmpty()
+	lr := sl.LogRecords().At(0)
+	lr.Body().SetStr("test")
+	if len(tAttrs) != 0 {
+		err := lr.Attributes().FromRaw(tAttrs)
+		assert.NoError(t, err)
 	}
 
-	return &pbCollectorLogs.ExportLogsServiceRequest{
-		ResourceLogs: []*logs.ResourceLogs{
-			{
-				Resource: res,
-				ScopeLogs: []*logs.ScopeLogs{
-					{
-						Scope: &common.InstrumentationScope{
-							Name:       "TestScope",
-							Attributes: sAttrs,
-						},
-						LogRecords: []*logs.LogRecord{
-							{
-								Body:       createValue("test"),
-								Attributes: tAttrs,
-							},
-						}},
-				},
-			},
-		},
-	}
+	return req
 }

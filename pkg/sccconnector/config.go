@@ -11,10 +11,10 @@ import (
 )
 
 type Config struct {
-	Trace   []match.Match `mapstructure:"trace"`
-	Metrics []match.Match `mapstructure:"metrics"`
-	// Log             []match.Match
-	ReportUnmatched bool `mapstructure:"report_unmatched"`
+	Trace           []match.Match `mapstructure:"trace"`
+	Metrics         []match.Match `mapstructure:"metrics"`
+	Log             []match.Match `mapstructure:"log"`
+	ReportUnmatched bool          `mapstructure:"report_unmatched"`
 }
 
 func (c *Config) Validate() error {
