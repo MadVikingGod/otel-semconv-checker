@@ -3,5 +3,6 @@ go 1.22.2
 use (
 	.
 	./cmd/collector
+	./internal/tools
 	./test/go
 )
