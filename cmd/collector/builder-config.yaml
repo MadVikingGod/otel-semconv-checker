@@ -4,7 +4,7 @@ dist:
   module: github.com/madvikinggod/otel-semconv-checker/cmd/collector
   output_path: ./
   otelcol_version: 0.98.0
-  version: 0.0.16
+  version: 0.0.18
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.98.0
@@ -39,7 +39,7 @@ receivers:
 connectors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.98.0 
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.98.0
-  - gomod: github.com/madvikinggod/otel-semconv-checker v0.0.14
+  - gomod: github.com/madvikinggod/otel-semconv-checker v0.0.18
     import: github.com/madvikinggod/otel-semconv-checker/pkg/sccconnector
 
 extensions:
