@@ -93,12 +93,16 @@ func newConnector(params connector.CreateSettings, config component.Config) (*co
 		return nil, err
 	}
 
+	res := pcommon.NewResource()
+	params.Resource.CopyTo(res)
+	res.Attributes().PutStr("service.name", "sccconnector")
+
 	return &connectorImp{
 		tracesMatch:     tracesMatch,
 		metricsMatch:    metricsMatch,
 		logsMatch:       logsMatch,
 		logger:          params.Logger,
-		resource:        params.Resource,
+		resource:        res,
 		reportUnmatched: cfg.ReportUnmatched,
 	}, nil
 }
