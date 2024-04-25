@@ -14,7 +14,7 @@ func main() {
 	info := component.BuildInfo{
 		Command:     "otelcol-scc",
 		Description: "OpenTelemetry Collector with Semantic Convention Checker",
-		Version:     "0.0.18",
+		Version:     "0.0.19",
 	}
 
 	set := otelcol.CollectorSettings{
