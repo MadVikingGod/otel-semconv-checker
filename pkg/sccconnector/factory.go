@@ -20,7 +20,7 @@ import (
 const (
 	typeStr      = "scc"
 	scopeName    = "github.com/madvikinggod/otel-semconv-checker/pkg/sccconnector"
-	scopeVersion = "v0.0.18"
+	scopeVersion = "v0.0.19"
 	schemaUrl    = "https://opentelemetry.io/schemas/1.24.0"
 )
 
