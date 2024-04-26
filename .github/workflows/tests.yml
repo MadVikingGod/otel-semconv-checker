@@ -62,9 +62,27 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version-file: go.work
+          cache-dependency-path: "**/*.sum"
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
           version: latest
           args: release --clean --snapshot
+  check-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+             internal/tools/go.sum
+      - name: Run Go tests
+        run: |
+          make collector-generate;
+          git diff --exit-code
