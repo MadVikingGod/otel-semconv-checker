@@ -50,5 +50,5 @@ func TestParseSemanticVersion(t *testing.T) {
 	versions, err := ParseSemanticVersion()
 
 	assert.NoError(t, err)
-	assert.Len(t, versions, 5)
+	assert.GreaterOrEqual(t, len(versions), 7)
 }
