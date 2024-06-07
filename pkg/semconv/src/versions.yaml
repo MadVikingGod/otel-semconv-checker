@@ -9,3 +9,11 @@ versions:
     dir: v1.23.0
   - url: "https://opentelemetry.io/schemas/1.24.0"
     dir: v1.24.0
+# How to generate these files:
+# 1 Using weaver release v0.4.0: https://github.com/open-telemetry/weaver/releases/tag/v0.4.0
+# 2 Use the weaver project and yq to generate the json files        
+# weaver registry resolve -r ../semantic-conventions/model -f yaml | yq '.groups | map({(.id): .| {"Id":.id, "Attributes":[.attributes[] | {"CanonicalId": .name}]|sort}})  | add' -Sc > v1.26.0.json
+  - url: "https://opentelemetry.io/schemas/1.25.0"
+    json: v1.25.0.json
+  - url: "https://opentelemetry.io/schemas/1.26.0"
+    json: v1.26.0.json

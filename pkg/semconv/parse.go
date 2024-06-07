@@ -4,6 +4,7 @@ package semconv
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"path"
@@ -25,6 +26,7 @@ type versions struct {
 type SemanticVersion struct {
 	Url    string `yaml:"url"`
 	Dir    string `yaml:"dir"`
+	Json   string `yaml:"json"`
 	Groups map[string]Group
 }
 
@@ -47,11 +49,10 @@ var parseSemanticVersion = sync.OnceValues(func() (map[string]SemanticVersion, e
 	}
 	versions := make(map[string]SemanticVersion)
 	for _, v := range v.Versions {
-		groups, err := ParseGroups(path.Join("src", v.Dir))
+		err := v.parseGroups()
 		if err != nil {
 			return nil, err
 		}
-		v.Groups = groups
 		versions[v.Url] = v
 	}
 	return versions, nil
@@ -61,7 +62,39 @@ func ParseSemanticVersion() (map[string]SemanticVersion, error) {
 	return parseSemanticVersion()
 }
 
-func ParseGroups(dir string) (map[string]Group, error) {
+func (s *SemanticVersion) parseGroups() error {
+	if s.Dir != "" {
+		groups, err := parseDirGroups(path.Join("src", s.Dir))
+		if err != nil {
+			return err
+		}
+		s.Groups = groups
+	} else if s.Json != "" {
+		groups, err := parseJsonGroups(path.Join("src", s.Json))
+		if err != nil {
+			return err
+		}
+		s.Groups = groups
+	} else {
+		return fmt.Errorf("no dir or json specified")
+	}
+	return nil
+}
+
+func parseJsonGroups(file string) (map[string]Group, error) {
+	groups := make(map[string]Group)
+	f, err := files.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	err = json.NewDecoder(f).Decode(&groups)
+	if err != nil {
+		return nil, err
+	}
+	return groups, nil
+}
+
+func parseDirGroups(dir string) (map[string]Group, error) {
 	groups := make(map[string]Group)
 	err := fs.WalkDir(files, dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

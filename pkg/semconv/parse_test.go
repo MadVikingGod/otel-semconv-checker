@@ -27,7 +27,7 @@ func TestParseGroups(t *testing.T) {
 
 func testParseGroups(t *testing.T, dir string) {
 
-	groups, err := ParseGroups(dir)
+	groups, err := parseDirGroups(dir)
 
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(groups), 1)
@@ -50,5 +50,5 @@ func TestParseSemanticVersion(t *testing.T) {
 	versions, err := ParseSemanticVersion()
 
 	assert.NoError(t, err)
-	assert.Len(t, versions, 5)
+	assert.GreaterOrEqual(t, len(versions), 7)
 }
