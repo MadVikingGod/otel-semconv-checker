@@ -61,10 +61,11 @@ go-mod-tidy:
 	cd test/go; go mod tidy
 	cd internal/tools; go mod tidy
 
-update: collector-generate
+update: 
 	go get -u ./...
 	cd test/go; go get -u ./...
 	cd internal/tools; go get -u ./...
 	go work sync
 	make go-fmt
 	make go-mod-tidy
+	make -B collector-generate
