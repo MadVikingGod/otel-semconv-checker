@@ -47,7 +47,7 @@ connectors:
 
 extensions:
    - gomod:  github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.102.0
-   - gomod:  github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.102.0
+   - gomod:  github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.102.1-0.20240611145816-f9d80d9d7733
    - gomod:  github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.102.0
    - gomod:  go.opentelemetry.io/collector/extension/zpagesextension v0.102.1
 
