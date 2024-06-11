@@ -29,7 +29,9 @@ collector-generate: cmd/collector/main.go
 cmd/collector/main.go: cmd/collector/builder-config.yaml $(OCB)
 	cd cmd/collector; \
 	../../$(OCB) --config builder-config.yaml --skip-compilation; \
+	go get -u ./...; \
 	go mod tidy
+	go work sync
 
 test:
 	go test -timeout 60s ./...
@@ -62,10 +64,10 @@ go-mod-tidy:
 	cd internal/tools; go mod tidy
 
 update: 
+	make -B collector-generate
 	go get -u ./...
 	cd test/go; go get -u ./...
 	cd internal/tools; go get -u ./...
-	go work sync
 	make go-fmt
 	make go-mod-tidy
-	make -B collector-generate
+	go work sync
