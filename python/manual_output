@@ -1,0 +1,6 @@
+2023/12/08 17:08:43 INFO incorrect resource version type=trace section=resource version="" expected=https://opentelemetry.io/schemas/1.21.0
+2023/12/08 17:08:43 INFO missing attributes type=trace section=resource version="" attributes="[host.type host.arch host.image.name host.image.id host.image.version os.type os.description os.name os.version os.build_id]"
+2023/12/08 17:08:43 INFO extra attributes type=trace section=resource version="" attributes=[service.name]
+2023/12/08 17:08:43 INFO incorrect scope version type=trace section=span schemaUrl="" expected=https://opentelemetry.io/schemas/1.21.0 scope="name:\"tracer_name\""
+1
+2023/12/08 17:08:43 INFO missing attributes type=trace section=span scope.name=tracer_name name=http.server.2 attributes="[server.address server.port server.socket.address server.socket.port client.address client.port client.socket.address client.socket.port url.path url.query url.scheme http.route server.address server.port url.scheme]"

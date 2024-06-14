@@ -1,0 +1,6 @@
+2023/12/08 17:09:25 INFO incorrect resource version type=trace section=resource version="" expected=https://opentelemetry.io/schemas/1.21.0
+2023/12/08 17:09:25 INFO missing attributes type=trace section=resource version="" attributes="[host.type host.arch host.image.name host.image.id host.image.version os.type os.description os.name os.version os.build_id]"
+2023/12/08 17:09:25 INFO extra attributes type=trace section=resource version="" attributes=[service.name]
+2023/12/08 17:09:25 INFO incorrect scope version type=trace section=span schemaUrl="" expected=https://opentelemetry.io/schemas/1.21.0 scope="name:\"opentelemetry.instrumentation.requests\"  version:\"0.41b0\""
+1
+2023/12/08 17:09:25 INFO unmatched span type=trace section=span scope.name=opentelemetry.instrumentation.requests name=GET

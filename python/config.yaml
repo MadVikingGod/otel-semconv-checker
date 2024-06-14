@@ -1,0 +1,28 @@
+resource:
+trace:
+- semantic_version: "https://opentelemetry.io/schemas/1.20.0"
+  match: GET
+  groups:
+  - trace.http.client
+  - trace.http.common
+  ignore:
+  - http.resend_count
+  - net.peer.name
+  - net.peer.port
+  - net.peer.name
+  - net.peer.port
+  - http.request_content_length
+  - http.response_content_length
+  - net.sock.peer.addr
+  - net.sock.peer.port
+  - net.sock.peer.name
+  - net.sock.family
+  - user_agent.original
+  - http.status_code
+  - net.protocol.name
+    # - net.protocol.version
+  report_additional: true
+metric:
+log:
+report_unmatched: true
+server_address: 0.0.0.0:4318
